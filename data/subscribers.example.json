@@ -1,0 +1,18 @@
+{
+  "subscribers": [
+    {
+      "username": "juan",
+      "plan": "mensual",
+      "expires_at": "2026-07-30T00:00:00.000Z",
+      "created_at": "2026-06-30T00:00:00.000Z",
+      "updated_at": "2026-06-30T00:00:00.000Z"
+    },
+    {
+      "username": "maria",
+      "plan": "mensual",
+      "expires_at": "2026-06-15T00:00:00.000Z",
+      "created_at": "2026-05-15T00:00:00.000Z",
+      "updated_at": "2026-05-15T00:00:00.000Z"
+    }
+  ]
+}

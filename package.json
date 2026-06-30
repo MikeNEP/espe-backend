@@ -1,0 +1,12 @@
+{
+  "name": "espe-backend",
+  "version": "0.1.0",
+  "description": "Backend de suscripciones para ESPE Player",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

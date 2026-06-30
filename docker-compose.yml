@@ -1,0 +1,14 @@
+services:
+  espe-backend:
+    build: .
+    container_name: espe-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMIN_KEY=cambia-esta-clave-admin
+      # --- Fase Pro: descomenta para conectar con Jellyfin ---
+      # - JELLYFIN_URL=http://jellyfin:8096
+      # - JELLYFIN_API_KEY=tu-api-key-de-jellyfin
+    volumes:
+      - ./data:/app/data
