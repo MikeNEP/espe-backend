@@ -11,7 +11,28 @@ estado tras el login.
 - Expone una API para consultar el estado y para administrar (otorgar/revocar) suscripciones.
 - (Opcional, Fase Pro) Habilita/deshabilita la cuenta en **Jellyfin** según el pago.
 
+## Configuración (.env)
+
+Copia `.env.example` a `.env` y edítalo con tus datos (clave admin, Jellyfin, etc.).
+El backend lee ese archivo automáticamente.
+
+## Panel de administración web 💜
+
+Una vez corriendo, abre en el navegador:
+
+```
+http://localhost:8080/admin
+```
+
+Ingresas tu `ADMIN_KEY` y desde ahí puedes: ver suscriptores, agregar/renovar y
+revocar suscripciones — sin escribir comandos.
+
 ## Cómo correrlo
+
+### En Windows (lo más fácil)
+1. Edita el archivo `.env` con tus datos.
+2. Doble clic en **`start.bat`**.
+3. Abre `http://localhost:8080/admin`.
 
 ### Opción A — Node directo
 ```bash

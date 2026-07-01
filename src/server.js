@@ -1,6 +1,9 @@
 // ESPE Player - Backend de suscripciones (MVP)
 // Node.js puro, sin dependencias. Corre con: node src/server.js
+require('./loadEnv'); // carga variables desde el archivo .env si existe
 const http = require('http');
+const fs = require('fs');
+const nodePath = require('path');
 const { URL } = require('url');
 const store = require('./store');
 const jellyfin = require('./jellyfin');
@@ -56,6 +59,17 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (method === 'GET' && path === '/') {
     return json(res, 200, { service: 'espe-backend', ok: true, jellyfin: jellyfin.configured() });
+  }
+
+  // Panel de administración web (interfaz bonita)
+  if (method === 'GET' && (path === '/admin' || path === '/admin/')) {
+    try {
+      const html = fs.readFileSync(nodePath.join(__dirname, '..', 'public', 'admin.html'));
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    } catch (e) {
+      return json(res, 500, { error: 'no se pudo cargar el panel de administración' });
+    }
   }
 
   // === Estado de suscripción (lo consulta la app ESPE Player tras el login) ===

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ESPE Player · Panel de Suscripciones</title>
+<style>
+  :root {
+    --bg: #0B0710;
+    --card: #17131F;
+    --card2: #1e1830;
+    --purple: #CBA6FF;
+    --purple-strong: #6C2BD9;
+    --text: #EADFF7;
+    --muted: #9d90b5;
+    --green: #4ade80;
+    --red: #fb7185;
+    --border: #2A2440;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 50% -10%, #1a1030 0%, var(--bg) 60%);
+    color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 18px 60px; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
+  header h1 span { color: var(--purple); }
+  header p { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  }
+  .card h2 { margin: 0 0 16px; font-size: 17px; color: var(--purple); }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 5px; }
+  input, select {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card2); color: var(--text); font-size: 15px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--purple-strong); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  button {
+    cursor: pointer; border: none; border-radius: 10px; padding: 11px 18px; font-size: 15px;
+    font-weight: 600; background: var(--purple-strong); color: #fff; transition: filter .15s;
+  }
+  button:hover { filter: brightness(1.15); }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.danger { background: transparent; border: 1px solid var(--red); color: var(--red); padding: 7px 12px; font-size: 13px; }
+  button.small { padding: 7px 12px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge.activo { background: rgba(74,222,128,.15); color: var(--green); }
+  .badge.vencido { background: rgba(251,113,133,.15); color: var(--red); }
+  .actions { display: flex; gap: 8px; }
+  .msg { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 14px; display: none; }
+  .msg.ok { background: rgba(74,222,128,.12); color: var(--green); display: block; }
+  .msg.err { background: rgba(251,113,133,.12); color: var(--red); display: block; }
+  .empty { text-align: center; color: var(--muted); padding: 30px; }
+  .hide { display: none !important; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ESPE <span>Player</span></h1>
+    <p>Panel de suscripciones</p>
+  </header>
+
+  <!-- Login -->
+  <div id="login" class="card">
+    <h2>Ingresar</h2>
+    <label>Clave de administrador</label>
+    <div class="row">
+      <div style="flex:3"><input id="adminKey" type="password" placeholder="Tu ADMIN_KEY" /></div>
+      <div style="flex:1"><button style="width:100%" onclick="entrar()">Entrar</button></div>
+    </div>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+
+  <!-- Panel -->
+  <div id="panel" class="hide">
+    <div class="card">
+      <h2>Agregar o renovar suscripción</h2>
+      <div id="grantMsg" class="msg"></div>
+      <div class="row">
+        <div style="flex:2">
+          <label>Usuario (de Jellyfin)</label>
+          <input id="gUser" placeholder="ej: juan" />
+        </div>
+        <div>
+          <label>Días</label>
+          <input id="gDays" type="number" value="30" />
+        </div>
+        <div>
+          <label>Plan</label>
+          <input id="gPlan" value="mensual" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button style="width:100%" onclick="otorgar()">Otorgar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="topbar">
+        <h2 style="margin:0">Suscriptores</h2>
+        <button class="ghost small" onclick="cargar()">Actualizar</button>
+      </div>
+      <div id="tablaWrap"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const KEY_STORAGE = 'espe_admin_key';
+
+  function getKey() { return sessionStorage.getItem(KEY_STORAGE) || ''; }
+  function headers() { return { 'x-admin-key': getKey(), 'Content-Type': 'application/json' }; }
+
+  function showMsg(id, text, ok) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+    if (ok) setTimeout(() => { el.className = 'msg'; }, 3000);
+  }
+
+  async function entrar() {
+    const key = document.getElementById('adminKey').value.trim();
+    if (!key) return;
+    sessionStorage.setItem(KEY_STORAGE, key);
+    const res = await fetch('/api/v1/admin/subscribers', { headers: headers() });
+    if (res.status === 401) {
+      sessionStorage.removeItem(KEY_STORAGE);
+      return showMsg('loginMsg', 'Clave incorrecta', false);
+    }
+    document.getElementById('login').classList.add('hide');
+    document.getElementById('panel').classList.remove('hide');
+    cargar();
+  }
+
+  async function cargar() {
+    const res = await fetch('/api/v1/admin/subscribers', { headers: headers() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const subs = data.subscribers || [];
+    const wrap = document.getElementById('tablaWrap');
+    if (subs.length === 0) {
+      wrap.innerHTML = '<div class="empty">Todavía no hay suscriptores. Agrega uno arriba.</div>';
+      return;
+    }
+    let html = '<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días</th><th>Acciones</th></tr></thead><tbody>';
+    for (const s of subs) {
+      const vence = s.expires_at ? new Date(s.expires_at).toLocaleDateString('es-AR') : '-';
+      html += `<tr>
+        <td><b>${s.username}</b></td>
+        <td><span class="badge ${s.active ? 'activo' : 'vencido'}">${s.active ? 'Activo' : 'Vencido'}</span></td>
+        <td>${s.plan || '-'}</td>
+        <td>${vence}</td>
+        <td>${s.days_left}</td>
+        <td><div class="actions">
+          <button class="ghost small" onclick="renovar('${s.username}')">+30 días</button>
+          <button class="danger" onclick="revocar('${s.username}')">Revocar</button>
+        </div></td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  async function otorgar() {
+    const username = document.getElementById('gUser').value.trim().toLowerCase();
+    const days = parseInt(document.getElementById('gDays').value, 10);
+    const plan = document.getElementById('gPlan').value.trim() || 'mensual';
+    if (!username || !days) return showMsg('grantMsg', 'Completa usuario y días', false);
+    const res = await fetch('/api/v1/admin/grant', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ username, days, plan }),
+    });
+    if (res.ok) {
+      showMsg('grantMsg', `Suscripción otorgada a "${username}" (${days} días)`, true);
+      document.getElementById('gUser').value = '';
+      cargar();
+    } else {
+      showMsg('grantMsg', 'Error al otorgar', false);
+    }
+  }
+
+  async function renovar(username) {
+    await fetch('/api/v1/admin/grant', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ username, days: 30, plan: 'mensual' }),
+    });
+    cargar();
+  }
+
+  async function revocar(username) {
+    if (!confirm(`¿Revocar la suscripción de "${username}"? Perderá el acceso.`)) return;
+    await fetch('/api/v1/admin/revoke', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ username }),
+    });
+    cargar();
+  }
+
+  // Auto-login si ya había clave en esta sesión
+  if (getKey()) { entrar(); }
+</script>
+</body>
+</html>
