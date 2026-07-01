@@ -204,6 +204,7 @@
       <div class="field" style="display:flex; gap:12px">
         <div style="flex:1"><label>Días</label><input id="gDays" class="inp" type="number" value="30" /></div>
         <div style="flex:1"><label>Plan</label><select id="gPlan" class="inp"><option>mensual</option><option>trimestral</option><option>anual</option></select></div>
+        <div style="flex:1"><label>Pantallas</label><input id="gScreens" class="inp" type="number" min="1" value="2" /></div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" onclick="cerrar('overlay')">Cancelar</button><button class="btn" onclick="otorgar()">Otorgar acceso</button></div>
@@ -213,10 +214,11 @@
 <!-- Modal editar teléfono -->
 <div class="overlay" id="phoneOverlay">
   <div class="modal">
-    <div class="modal-head"><h3>Editar teléfono</h3><div class="x" onclick="cerrar('phoneOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-head"><h3>Editar suscriptor</h3><div class="x" onclick="cerrar('phoneOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
     <div class="modal-body">
       <div class="field"><label>Usuario</label><input id="pUser" class="inp" readonly /></div>
       <div class="field"><label>Teléfono</label><input id="pPhone" class="inp" placeholder="ej: +54 9 11 1234-5678" /></div>
+      <div class="field"><label>Pantallas simultáneas</label><input id="pScreens" class="inp" type="number" min="1" value="2" /></div>
     </div>
     <div class="modal-foot"><button class="btn ghost" onclick="cerrar('phoneOverlay')">Cancelar</button><button class="btn" onclick="guardarTel()">Guardar</button></div>
   </div>
@@ -290,7 +292,7 @@
     if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
     const wrap=document.getElementById('tablaWrap');
     if(list.length===0){ wrap.innerHTML='<div class="empty">'+(SUBS.length===0?'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.':'Sin resultados.')+'</div>'; return; }
-    let h='<table><thead><tr><th>Usuario</th><th>Teléfono</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    let h='<table><thead><tr><th>Usuario</th><th>Teléfono</th><th>Estado</th><th>Plan</th><th>Pantallas</th><th>Vence</th><th>Días</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
     for(const s of list){
       const vence=s.expires_at?new Date(s.expires_at).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}):'—';
       const e=estado(s); const txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
@@ -302,10 +304,10 @@
         <td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
         <td>${tel}</td>
         <td><span class="badge ${e}">${txt}</span></td>
-        <td>${s.plan||'—'}</td><td>${vence}</td><td>${s.days_left}d</td>
+        <td>${s.plan||'—'}</td><td>${s.screens||2} 📺</td><td>${vence}</td><td>${s.days_left}d</td>
         <td><div class="actions">
           <button class="btn sm ghost" onclick="renovar('${s.username}')">+30d</button>
-          <button class="icobtn" title="Editar teléfono" onclick="editarTel('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+          <button class="icobtn" title="Editar suscriptor" onclick="editarTel('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
           <button class="icobtn" title="Historial" onclick="verHist('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
           ${banIcon}
           <button class="icobtn red" title="Revocar" onclick="revocar('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -325,7 +327,8 @@
     const phone=document.getElementById('gPhone').value.trim();
     if(!username||!days) return toast('Completa usuario y días','err');
     const create=document.getElementById('gCreate').checked;
-    const payload={username,days,plan,phone};
+    const screens=parseInt(document.getElementById('gScreens').value,10)||2;
+    const payload={username,days,plan,phone,screens};
     let url='/api/v1/admin/grant';
     if(create){ url='/api/v1/admin/create'; payload.password=document.getElementById('gPass').value; }
     const r=await fetch(url,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
@@ -343,8 +346,15 @@
   async function revocar(u){ if(!confirm('¿Revocar el acceso de "'+u+'"?')) return; const r=await fetch('/api/v1/admin/revoke',{method:'POST',headers:headers(),body:JSON.stringify({username:u})}); if(r.ok){ toast('Acceso revocado a "'+u+'"'); cargar(); } }
   async function banear(u,estado){ if(estado&&!confirm('¿Banear a "'+u+'"? No podrá acceder aunque tenga suscripción.')) return; const r=await fetch('/api/v1/admin/ban',{method:'POST',headers:headers(),body:JSON.stringify({username:u,banned:estado})}); if(r.ok){ toast(estado?'"'+u+'" baneado':'"'+u+'" desbaneado', estado?'':'ok'); cargar(); } }
 
-  function editarTel(u){ const s=SUBS.find(x=>x.username===u); document.getElementById('pUser').value=u; document.getElementById('pPhone').value=s?s.phone||'':''; document.getElementById('phoneOverlay').classList.add('show'); document.getElementById('pPhone').focus(); }
-  async function guardarTel(){ const u=document.getElementById('pUser').value; const phone=document.getElementById('pPhone').value.trim(); const r=await fetch('/api/v1/admin/phone',{method:'POST',headers:headers(),body:JSON.stringify({username:u,phone})}); if(r.ok){ toast('Teléfono actualizado','ok'); cerrar('phoneOverlay'); cargar(); } else toast('Error','err'); }
+  function editarTel(u){ const s=SUBS.find(x=>x.username===u); document.getElementById('pUser').value=u; document.getElementById('pPhone').value=s?s.phone||'':''; document.getElementById('pScreens').value=s?s.screens||2:2; document.getElementById('phoneOverlay').classList.add('show'); document.getElementById('pPhone').focus(); }
+  async function guardarTel(){
+    const u=document.getElementById('pUser').value;
+    const phone=document.getElementById('pPhone').value.trim();
+    const screens=parseInt(document.getElementById('pScreens').value,10)||2;
+    const r1=await fetch('/api/v1/admin/phone',{method:'POST',headers:headers(),body:JSON.stringify({username:u,phone})});
+    const r2=await fetch('/api/v1/admin/screens',{method:'POST',headers:headers(),body:JSON.stringify({username:u,screens})});
+    if(r1.ok&&r2.ok){ toast('Suscriptor actualizado','ok'); cerrar('phoneOverlay'); cargar(); } else toast('Error','err');
+  }
 
   function verHist(u){
     const s=SUBS.find(x=>x.username===u); const hist=(s&&s.history)?s.history.slice().reverse():[];
@@ -361,8 +371,8 @@
   }
 
   function exportarCSV(){
-    const rows=[['usuario','telefono','estado','plan','vence','dias_restantes']];
-    SUBS.forEach(s=>rows.push([s.username,s.phone||'',estado(s),s.plan||'',s.expires_at||'',s.days_left]));
+    const rows=[['usuario','telefono','pantallas','estado','plan','vence','dias_restantes']];
+    SUBS.forEach(s=>rows.push([s.username,s.phone||'',s.screens||2,estado(s),s.plan||'',s.expires_at||'',s.days_left]));
     const csv=rows.map(r=>r.join(',')).join('\n');
     const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='suscriptores-espe.csv'; a.click();
   }

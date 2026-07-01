@@ -19,6 +19,7 @@ function load() {
     for (const s of data.subscribers) {
       if (s.phone == null) s.phone = '';
       if (s.banned == null) s.banned = false;
+      if (s.screens == null) s.screens = 2;
       if (!Array.isArray(s.history)) s.history = [];
     }
     return data;
@@ -49,6 +50,7 @@ function grant(username, days, plan, opts = {}) {
   if (!sub) {
     sub = {
       username, plan: plan || 'mensual', phone: opts.phone || '', banned: false,
+      screens: opts.screens || 2,
       expires_at: expires.toISOString(), created_at: now.toISOString(), updated_at: now.toISOString(),
       history: [],
     };
@@ -58,6 +60,7 @@ function grant(username, days, plan, opts = {}) {
     sub.expires_at = expires.toISOString();
     sub.updated_at = now.toISOString();
     if (opts.phone) sub.phone = opts.phone;
+    if (opts.screens) sub.screens = opts.screens;
   }
   sub.history = sub.history || [];
   sub.history.push({ date: now.toISOString(), action: 'pago', days, plan: sub.plan, amount: opts.amount || 0 });
@@ -99,4 +102,14 @@ function setPhone(username, phone) {
   return sub;
 }
 
-module.exports = { list, getByUsername, grant, revoke, setBanned, setPhone };
+function setScreens(username, screens) {
+  const data = load();
+  const sub = data.subscribers.find((s) => s.username === username);
+  if (!sub) return null;
+  sub.screens = Math.max(1, parseInt(screens, 10) || 2);
+  sub.updated_at = new Date().toISOString();
+  save(data);
+  return sub;
+}
+
+module.exports = { list, getByUsername, grant, revoke, setBanned, setPhone, setScreens };

@@ -37,17 +37,20 @@ function statusFor(sub) {
     status: !sub ? 'inexistente' : banned ? 'baneado' : subActive ? 'activo' : 'vencido',
     plan: sub ? sub.plan : null,
     phone: sub ? sub.phone || '' : '',
+    screens: sub ? sub.screens || 2 : 2,
     expires_at: sub ? sub.expires_at : null,
     days_left: sub ? daysLeft(sub.expires_at) : 0,
     history: sub ? sub.history || [] : [],
   };
 }
 
-// Sincroniza la cuenta en Jellyfin: habilita si tiene acceso, deshabilita si no.
+// Sincroniza la cuenta en Jellyfin: habilita si tiene acceso, deshabilita si no,
+// y aplica el máximo de pantallas simultáneas del suscriptor.
 async function syncJellyfin(sub) {
   if (!jellyfin.configured() || !sub) return;
   const enabled = new Date(sub.expires_at).getTime() > Date.now() && !sub.banned;
-  try { await jellyfin.setDisabled(sub.username, !enabled); } catch (e) { /* log */ }
+  const screens = parseInt(sub.screens, 10) || 2;
+  try { await jellyfin.setDisabled(sub.username, !enabled, screens); } catch (e) { /* log */ }
 }
 
 function readBody(req) {
@@ -147,7 +150,8 @@ const server = http.createServer(async (req, res) => {
       // 2) Registrar la suscripción
       let amount = Number(body.amount);
       if (!amount) amount = Number(settings.get().prices[plan]) || 0;
-      const sub = store.grant(username, days, plan, { phone: body.phone, amount });
+      const screens = parseInt(body.screens, 10) || 2;
+      const sub = store.grant(username, days, plan, { phone: body.phone, amount, screens });
       // 3) Habilitar la cuenta
       await syncJellyfin(sub);
       return json(res, 200, statusFor(sub));
@@ -165,7 +169,8 @@ const server = http.createServer(async (req, res) => {
       // Monto del pago: si no viene, usa el precio del plan de la configuración.
       let amount = Number(body.amount);
       if (!amount) amount = Number(settings.get().prices[plan]) || 0;
-      const sub = store.grant(username, days, plan, { phone: body.phone, amount });
+      const screens = parseInt(body.screens, 10) || 2;
+      const sub = store.grant(username, days, plan, { phone: body.phone, amount, screens });
       await syncJellyfin(sub);
       return json(res, 200, statusFor(sub));
     }
@@ -202,6 +207,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, statusFor(sub));
     }
 
+    // Actualizar pantallas simultáneas: { "username": "juan", "screens": 2 }
+    if (method === 'POST' && path === '/api/v1/admin/screens') {
+      const body = await readBody(req);
+      const username = (body.username || '').trim().toLowerCase();
+      if (!username) return json(res, 400, { error: 'username requerido' });
+      const sub = store.setScreens(username, body.screens);
+      if (!sub) return json(res, 404, { error: 'el usuario no existe' });
+      await syncJellyfin(sub); // aplica el nuevo límite en Jellyfin
+      return json(res, 200, statusFor(sub));
+    }
+
     return json(res, 404, { error: 'ruta de admin no encontrada' });
   }
 
@@ -214,7 +230,8 @@ function syncExpired() {
   if (!jellyfin.configured()) return;
   for (const sub of store.list()) {
     const enabled = new Date(sub.expires_at).getTime() > Date.now() && !sub.banned;
-    jellyfin.setDisabled(sub.username, !enabled).catch(() => {});
+    const screens = parseInt(sub.screens, 10) || 2;
+    jellyfin.setDisabled(sub.username, !enabled, screens).catch(() => {});
   }
 }
 setInterval(syncExpired, 12 * 60 * 60 * 1000);

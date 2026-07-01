@@ -30,8 +30,8 @@ async function findUserId(username) {
   return u ? u.Id : null;
 }
 
-// Habilita o deshabilita la cuenta (IsDisabled en la Policy del usuario).
-async function setDisabled(username, disabled) {
+// Habilita/deshabilita la cuenta y fija el máximo de pantallas simultáneas.
+async function setDisabled(username, disabled, maxSessions) {
   if (!configured()) throw new Error('Jellyfin no está configurado');
   const userId = await findUserId(username);
   if (!userId) throw new Error(`Usuario "${username}" no existe en Jellyfin`);
@@ -41,6 +41,10 @@ async function setDisabled(username, disabled) {
   const user = await userRes.json();
   const policy = user.Policy || {};
   policy.IsDisabled = disabled;
+  // Máximo de reproducciones simultáneas (0 = ilimitado en Jellyfin)
+  if (typeof maxSessions === 'number' && maxSessions > 0) {
+    policy.MaxActiveSessions = maxSessions;
+  }
 
   const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Policy`, {
     method: 'POST',
