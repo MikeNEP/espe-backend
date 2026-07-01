@@ -195,6 +195,11 @@
     <div class="modal-head"><h3>Nuevo suscriptor</h3><div class="x" onclick="cerrar('overlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
     <div class="modal-body">
       <div class="field"><label>Usuario (el mismo de Jellyfin)</label><input id="gUser" class="inp" placeholder="ej: juan" /></div>
+      <label style="display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:16px; cursor:pointer">
+        <input type="checkbox" id="gCreate" onchange="toggleCreate()" style="width:18px; height:18px; accent-color:#7C3AED" />
+        Crear cuenta nueva en Jellyfin
+      </label>
+      <div class="field" id="passField" style="display:none"><label>Contraseña del nuevo usuario</label><input id="gPass" class="inp" type="text" placeholder="ej: espe1234" /></div>
       <div class="field"><label>Teléfono (opcional)</label><input id="gPhone" class="inp" placeholder="ej: +54 9 11 1234-5678" /></div>
       <div class="field" style="display:flex; gap:12px">
         <div style="flex:1"><label>Días</label><input id="gDays" class="inp" type="number" value="30" /></div>
@@ -311,6 +316,7 @@
 
   function abrirModal(){ document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
   function cerrar(id){ document.getElementById(id).classList.remove('show'); }
+  function toggleCreate(){ document.getElementById('passField').style.display=document.getElementById('gCreate').checked?'block':'none'; }
 
   async function otorgar(){
     const username=document.getElementById('gUser').value.trim().toLowerCase();
@@ -318,9 +324,20 @@
     const plan=document.getElementById('gPlan').value;
     const phone=document.getElementById('gPhone').value.trim();
     if(!username||!days) return toast('Completa usuario y días','err');
-    const r=await fetch('/api/v1/admin/grant',{method:'POST',headers:headers(),body:JSON.stringify({username,days,plan,phone})});
-    if(r.ok){ toast('Acceso otorgado a "'+username+'"','ok'); document.getElementById('gUser').value=''; document.getElementById('gPhone').value=''; cerrar('overlay'); cargar(); }
-    else toast('Error al otorgar','err');
+    const create=document.getElementById('gCreate').checked;
+    const payload={username,days,plan,phone};
+    let url='/api/v1/admin/grant';
+    if(create){ url='/api/v1/admin/create'; payload.password=document.getElementById('gPass').value; }
+    const r=await fetch(url,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
+    if(r.ok){
+      toast((create?'Cuenta creada y suscripción activa: "':'Acceso otorgado a "')+username+'"','ok');
+      document.getElementById('gUser').value=''; document.getElementById('gPass').value=''; document.getElementById('gPhone').value='';
+      document.getElementById('gCreate').checked=false; toggleCreate();
+      cerrar('overlay'); cargar();
+    } else {
+      let msg='Error al otorgar'; try { msg=(await r.json()).error||msg; } catch(e){}
+      toast(msg,'err');
+    }
   }
   async function renovar(u){ const r=await fetch('/api/v1/admin/grant',{method:'POST',headers:headers(),body:JSON.stringify({username:u,days:30,plan:'mensual'})}); if(r.ok){ toast('+30 días para "'+u+'"','ok'); cargar(); } }
   async function revocar(u){ if(!confirm('¿Revocar el acceso de "'+u+'"?')) return; const r=await fetch('/api/v1/admin/revoke',{method:'POST',headers:headers(),body:JSON.stringify({username:u})}); if(r.ok){ toast('Acceso revocado a "'+u+'"'); cargar(); } }

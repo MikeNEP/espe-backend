@@ -51,4 +51,18 @@ async function setDisabled(username, disabled) {
   return true;
 }
 
-module.exports = { configured, setDisabled, findUserId };
+// Crea un usuario nuevo en Jellyfin con nombre y contraseña.
+async function createUser(username, password) {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const existing = await findUserId(username);
+  if (existing) throw new Error(`El usuario "${username}" ya existe en Jellyfin`);
+  const res = await fetch(`${JELLYFIN_URL}/Users/New`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ Name: username, Password: password || '' }),
+  });
+  if (!res.ok) throw new Error(`No se pudo crear el usuario (${res.status})`);
+  return res.json();
+}
+
+module.exports = { configured, setDisabled, findUserId, createUser };

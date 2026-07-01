@@ -127,6 +127,32 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, settings.save(patch));
     }
 
+    // Crear cuenta en Jellyfin + suscripción en un paso:
+    // { "username": "juan", "password": "1234", "days": 30, "plan": "mensual", "phone": "..." }
+    if (method === 'POST' && path === '/api/v1/admin/create') {
+      const body = await readBody(req);
+      const username = (body.username || '').trim().toLowerCase();
+      const days = parseInt(body.days, 10) || 30;
+      const plan = body.plan || 'mensual';
+      if (!username) return json(res, 400, { error: 'username requerido' });
+
+      // 1) Crear el usuario en Jellyfin (si está configurado)
+      if (jellyfin.configured()) {
+        try {
+          await jellyfin.createUser(username, body.password || '');
+        } catch (e) {
+          return json(res, 400, { error: 'Jellyfin: ' + e.message });
+        }
+      }
+      // 2) Registrar la suscripción
+      let amount = Number(body.amount);
+      if (!amount) amount = Number(settings.get().prices[plan]) || 0;
+      const sub = store.grant(username, days, plan, { phone: body.phone, amount });
+      // 3) Habilitar la cuenta
+      await syncJellyfin(sub);
+      return json(res, 200, statusFor(sub));
+    }
+
     // Otorgar/extender suscripción: { "username": "juan", "days": 30, "plan": "mensual", "phone": "..." }
     if (method === 'POST' && path === '/api/v1/admin/grant') {
       const body = await readBody(req);
