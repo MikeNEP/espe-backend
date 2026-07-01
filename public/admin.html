@@ -3,207 +3,348 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ESPE Player · Panel de Suscripciones</title>
+<title>ESPE Player · Panel de Administración</title>
 <style>
   :root {
-    --bg: #0B0710;
+    --bg: #0A0710;
+    --sidebar: #110D1B;
     --card: #17131F;
-    --card2: #1e1830;
-    --purple: #CBA6FF;
-    --purple-strong: #6C2BD9;
-    --text: #EADFF7;
-    --muted: #9d90b5;
-    --green: #4ade80;
-    --red: #fb7185;
+    --card-hover: #1F192E;
     --border: #2A2440;
+    --border-soft: #221D33;
+    --purple: #A97BFF;
+    --purple-2: #7C3AED;
+    --grad: linear-gradient(135deg, #7C3AED 0%, #A97BFF 100%);
+    --text: #ECE6F5;
+    --muted: #8E82A6;
+    --green: #34D399;
+    --amber: #FBBF24;
+    --red: #FB7185;
+    --shadow: 0 10px 40px rgba(0,0,0,.45);
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
-    margin: 0; background: radial-gradient(1200px 600px at 50% -10%, #1a1030 0%, var(--bg) 60%);
-    color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh;
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 18px 60px; }
-  header { text-align: center; margin-bottom: 28px; }
-  header h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
-  header h1 span { color: var(--purple); }
-  header p { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #2c2540; border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- LOGIN ---------- */
+  #login {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(900px 500px at 50% -10%, #1b1030 0%, var(--bg) 60%);
+    padding: 20px; z-index: 50;
   }
-  .card h2 { margin: 0 0 16px; font-size: 17px; color: var(--purple); }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 5px; }
-  input, select {
-    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
-    background: var(--card2); color: var(--text); font-size: 15px; outline: none;
+  .login-card {
+    width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px 30px; box-shadow: var(--shadow); text-align: center;
   }
-  input:focus, select:focus { border-color: var(--purple-strong); }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .row > div { flex: 1; min-width: 140px; }
-  button {
-    cursor: pointer; border: none; border-radius: 10px; padding: 11px 18px; font-size: 15px;
-    font-weight: 600; background: var(--purple-strong); color: #fff; transition: filter .15s;
+  .logo-badge {
+    width: 62px; height: 62px; border-radius: 16px; background: var(--grad); margin: 0 auto 18px;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 26px;
+    color: #fff; box-shadow: 0 8px 24px rgba(124,58,237,.5);
   }
-  button:hover { filter: brightness(1.15); }
-  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  button.danger { background: transparent; border: 1px solid var(--red); color: var(--red); padding: 7px 12px; font-size: 13px; }
-  button.small { padding: 7px 12px; font-size: 13px; }
+  .login-card h1 { font-size: 22px; margin-bottom: 4px; }
+  .login-card h1 b { color: var(--purple); }
+  .login-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+  /* ---------- LAYOUT ---------- */
+  .app { display: none; min-height: 100vh; }
+  .app.show { display: grid; grid-template-columns: 250px 1fr; }
+  aside {
+    background: var(--sidebar); border-right: 1px solid var(--border-soft);
+    padding: 24px 18px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; padding: 0 6px; }
+  .brand .logo-badge { width: 40px; height: 40px; border-radius: 11px; font-size: 18px; margin: 0; }
+  .brand .name { font-weight: 700; font-size: 16px; }
+  .brand .name span { color: var(--purple); }
+  nav a {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 11px;
+    color: var(--muted); text-decoration: none; font-size: 14.5px; font-weight: 500; margin-bottom: 4px;
+    cursor: pointer; transition: all .15s;
+  }
+  nav a svg { width: 19px; height: 19px; }
+  nav a.active { background: var(--card-hover); color: var(--text); }
+  nav a.active svg { color: var(--purple); }
+  nav a:hover { color: var(--text); }
+  .side-foot { margin-top: auto; color: var(--muted); font-size: 12px; padding: 0 8px; }
+  .side-foot .logout { display: flex; align-items: center; gap: 10px; color: var(--muted); cursor: pointer; padding: 10px 8px; border-radius: 10px; }
+  .side-foot .logout:hover { color: var(--red); }
+
+  main { padding: 28px 34px; overflow-x: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+  .topbar h2 { font-size: 22px; }
+  .topbar .sub { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+
+  /* ---------- BUTTONS ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer;
+    border-radius: 11px; padding: 11px 18px; font-size: 14px; font-weight: 600; color: #fff;
+    background: var(--grad); box-shadow: 0 6px 18px rgba(124,58,237,.35); transition: transform .1s, filter .15s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: scale(.98); }
+  .btn svg { width: 17px; height: 17px; }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); box-shadow: none; }
+  .btn.sm { padding: 7px 12px; font-size: 13px; box-shadow: none; }
+  .btn.danger-ghost { background: transparent; border: 1px solid rgba(251,113,133,.4); color: var(--red); box-shadow: none; padding: 7px 12px; font-size: 13px; }
+  .btn.danger-ghost:hover { background: rgba(251,113,133,.12); filter: none; }
+
+  /* ---------- KPI CARDS ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 26px; }
+  .kpi { background: var(--card); border: 1px solid var(--border-soft); border-radius: 16px; padding: 18px 20px; }
+  .kpi .ico { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+  .kpi .ico svg { width: 21px; height: 21px; }
+  .kpi .label { color: var(--muted); font-size: 13px; }
+  .kpi .num { font-size: 28px; font-weight: 800; margin-top: 2px; }
+  .ico.p { background: rgba(169,123,255,.15); color: var(--purple); }
+  .ico.g { background: rgba(52,211,153,.15); color: var(--green); }
+  .ico.r { background: rgba(251,113,133,.15); color: var(--red); }
+  .ico.a { background: rgba(251,191,36,.15); color: var(--amber); }
+
+  /* ---------- TABLE CARD ---------- */
+  .panel { background: var(--card); border: 1px solid var(--border-soft); border-radius: 16px; overflow: hidden; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border-soft); gap: 14px; flex-wrap: wrap; }
+  .panel-head h3 { font-size: 16px; }
+  .search { position: relative; }
+  .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
+  .search input { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px 9px 36px; color: var(--text); font-size: 14px; width: 230px; outline: none; }
+  .search input:focus { border-color: var(--purple-2); }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
-  .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-  .badge.activo { background: rgba(74,222,128,.15); color: var(--green); }
-  .badge.vencido { background: rgba(251,113,133,.15); color: var(--red); }
+  th { text-align: left; padding: 13px 20px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+  td { padding: 14px 20px; border-top: 1px solid var(--border-soft); font-size: 14px; }
+  tbody tr:hover { background: var(--card-hover); }
+  .user-cell { display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--grad); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; text-transform: uppercase; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .badge.activo { background: rgba(52,211,153,.13); color: var(--green); }
+  .badge.vencido { background: rgba(251,113,133,.13); color: var(--red); }
+  .badge.porvencer { background: rgba(251,191,36,.13); color: var(--amber); }
   .actions { display: flex; gap: 8px; }
-  .msg { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 14px; display: none; }
-  .msg.ok { background: rgba(74,222,128,.12); color: var(--green); display: block; }
-  .msg.err { background: rgba(251,113,133,.12); color: var(--red); display: block; }
-  .empty { text-align: center; color: var(--muted); padding: 30px; }
-  .hide { display: none !important; }
-  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .empty { text-align: center; padding: 46px 20px; color: var(--muted); }
+
+  /* ---------- MODAL ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(5,3,10,.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 40; padding: 20px; }
+  .overlay.show { display: flex; }
+  .modal { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+  .modal-head { padding: 20px 22px; border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { font-size: 17px; }
+  .modal-head .x { cursor: pointer; color: var(--muted); }
+  .modal-body { padding: 22px; }
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; }
+  input.inp, select.inp { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; outline: none; }
+  input.inp:focus, select.inp:focus { border-color: var(--purple-2); }
+  .modal-foot { padding: 0 22px 22px; display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ---------- TOASTS ---------- */
+  #toasts { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }
+  .toast { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--purple); border-radius: 12px; padding: 13px 18px; font-size: 14px; box-shadow: var(--shadow); min-width: 240px; animation: slidein .25s ease; }
+  .toast.ok { border-left-color: var(--green); }
+  .toast.err { border-left-color: var(--red); }
+  @keyframes slidein { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  @media (max-width: 780px) {
+    .app.show { grid-template-columns: 1fr; }
+    aside { display: none; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    main { padding: 20px 16px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>ESPE <span>Player</span></h1>
-    <p>Panel de suscripciones</p>
-  </header>
 
-  <!-- Login -->
-  <div id="login" class="card">
-    <h2>Ingresar</h2>
-    <label>Clave de administrador</label>
-    <div class="row">
-      <div style="flex:3"><input id="adminKey" type="password" placeholder="Tu ADMIN_KEY" /></div>
-      <div style="flex:1"><button style="width:100%" onclick="entrar()">Entrar</button></div>
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-card">
+    <div class="logo-badge">E</div>
+    <h1>ESPE <b>Player</b></h1>
+    <p>Panel de administración</p>
+    <div class="field" style="text-align:left">
+      <label>Clave de administrador</label>
+      <input id="adminKey" class="inp" type="password" placeholder="Ingresa tu ADMIN_KEY" onkeydown="if(event.key==='Enter')entrar()" />
     </div>
-    <div id="loginMsg" class="msg"></div>
+    <button class="btn" style="width:100%; justify-content:center" onclick="entrar()">Ingresar</button>
   </div>
+</div>
 
-  <!-- Panel -->
-  <div id="panel" class="hide">
-    <div class="card">
-      <h2>Agregar o renovar suscripción</h2>
-      <div id="grantMsg" class="msg"></div>
-      <div class="row">
-        <div style="flex:2">
-          <label>Usuario (de Jellyfin)</label>
-          <input id="gUser" placeholder="ej: juan" />
-        </div>
-        <div>
-          <label>Días</label>
-          <input id="gDays" type="number" value="30" />
-        </div>
-        <div>
-          <label>Plan</label>
-          <input id="gPlan" value="mensual" />
-        </div>
-        <div style="display:flex; align-items:flex-end">
-          <button style="width:100%" onclick="otorgar()">Otorgar</button>
-        </div>
+<!-- APP -->
+<div class="app" id="app">
+  <aside>
+    <div class="brand">
+      <div class="logo-badge">E</div>
+      <div class="name">ESPE <span>Player</span></div>
+    </div>
+    <nav>
+      <a class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> Panel</a>
+      <a onclick="document.querySelector('.panel').scrollIntoView({behavior:'smooth'})"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Suscriptores</a>
+    </nav>
+    <div class="side-foot">
+      <div class="logout" onclick="salir()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Cerrar sesión</div>
+      <div style="padding:6px 8px">ESPE Player · v1.0</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <h2>Panel de suscripciones</h2>
+        <div class="sub">Gestiona los accesos de tus usuarios</div>
       </div>
+      <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
     </div>
 
-    <div class="card">
-      <div class="topbar">
-        <h2 style="margin:0">Suscriptores</h2>
-        <button class="ghost small" onclick="cargar()">Actualizar</button>
+    <div class="kpis">
+      <div class="kpi"><div class="ico p"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="label">Total</div><div class="num" id="kTotal">0</div></div>
+      <div class="kpi"><div class="ico g"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="label">Activos</div><div class="num" id="kActivos">0</div></div>
+      <div class="kpi"><div class="ico r"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="label">Vencidos</div><div class="num" id="kVencidos">0</div></div>
+      <div class="kpi"><div class="ico a"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="label">Por vencer (≤7d)</div><div class="num" id="kPorVencer">0</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Suscriptores</h3>
+        <div class="search">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="buscar" placeholder="Buscar usuario..." oninput="render()" />
+        </div>
       </div>
       <div id="tablaWrap"></div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle">Nuevo suscriptor</h3><div class="x" onclick="cerrarModal()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-body">
+      <div class="field"><label>Usuario (el mismo de Jellyfin)</label><input id="gUser" class="inp" placeholder="ej: juan" /></div>
+      <div class="field" style="display:flex; gap:12px">
+        <div style="flex:1"><label>Días</label><input id="gDays" class="inp" type="number" value="30" /></div>
+        <div style="flex:1"><label>Plan</label>
+          <select id="gPlan" class="inp"><option>mensual</option><option>trimestral</option><option>anual</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn" onclick="otorgar()">Otorgar acceso</button>
     </div>
   </div>
 </div>
 
+<div id="toasts"></div>
+
 <script>
-  const KEY_STORAGE = 'espe_admin_key';
+  const KEY = 'espe_admin_key';
+  let SUBS = [];
 
-  function getKey() { return sessionStorage.getItem(KEY_STORAGE) || ''; }
-  function headers() { return { 'x-admin-key': getKey(), 'Content-Type': 'application/json' }; }
+  const getKey = () => sessionStorage.getItem(KEY) || '';
+  const headers = () => ({ 'x-admin-key': getKey(), 'Content-Type': 'application/json' });
 
-  function showMsg(id, text, ok) {
-    const el = document.getElementById(id);
-    el.textContent = text;
-    el.className = 'msg ' + (ok ? 'ok' : 'err');
-    if (ok) setTimeout(() => { el.className = 'msg'; }, 3000);
+  function toast(msg, type) {
+    const t = document.createElement('div');
+    t.className = 'toast ' + (type || '');
+    t.textContent = msg;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(() => t.remove(), 3200);
   }
 
   async function entrar() {
     const key = document.getElementById('adminKey').value.trim();
     if (!key) return;
-    sessionStorage.setItem(KEY_STORAGE, key);
+    sessionStorage.setItem(KEY, key);
     const res = await fetch('/api/v1/admin/subscribers', { headers: headers() });
-    if (res.status === 401) {
-      sessionStorage.removeItem(KEY_STORAGE);
-      return showMsg('loginMsg', 'Clave incorrecta', false);
-    }
-    document.getElementById('login').classList.add('hide');
-    document.getElementById('panel').classList.remove('hide');
+    if (res.status === 401) { sessionStorage.removeItem(KEY); return toast('Clave incorrecta', 'err'); }
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').classList.add('show');
     cargar();
   }
+
+  function salir() { sessionStorage.removeItem(KEY); location.reload(); }
 
   async function cargar() {
     const res = await fetch('/api/v1/admin/subscribers', { headers: headers() });
     if (!res.ok) return;
     const data = await res.json();
-    const subs = data.subscribers || [];
+    SUBS = data.subscribers || [];
+    stats();
+    render();
+  }
+
+  function stats() {
+    const activos = SUBS.filter(s => s.active).length;
+    const porVencer = SUBS.filter(s => s.active && s.days_left <= 7).length;
+    document.getElementById('kTotal').textContent = SUBS.length;
+    document.getElementById('kActivos').textContent = activos;
+    document.getElementById('kVencidos').textContent = SUBS.length - activos;
+    document.getElementById('kPorVencer').textContent = porVencer;
+  }
+
+  function render() {
+    const q = document.getElementById('buscar').value.trim().toLowerCase();
+    const list = SUBS.filter(s => s.username.includes(q));
     const wrap = document.getElementById('tablaWrap');
-    if (subs.length === 0) {
-      wrap.innerHTML = '<div class="empty">Todavía no hay suscriptores. Agrega uno arriba.</div>';
+    if (list.length === 0) {
+      wrap.innerHTML = '<div class="empty">' + (SUBS.length === 0 ? 'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.' : 'Sin resultados para tu búsqueda.') + '</div>';
       return;
     }
-    let html = '<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días</th><th>Acciones</th></tr></thead><tbody>';
-    for (const s of subs) {
-      const vence = s.expires_at ? new Date(s.expires_at).toLocaleDateString('es-AR') : '-';
-      html += `<tr>
-        <td><b>${s.username}</b></td>
-        <td><span class="badge ${s.active ? 'activo' : 'vencido'}">${s.active ? 'Activo' : 'Vencido'}</span></td>
-        <td>${s.plan || '-'}</td>
+    let h = '<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días restantes</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    for (const s of list) {
+      const vence = s.expires_at ? new Date(s.expires_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+      let badge = 'vencido', txt = 'Vencido';
+      if (s.active && s.days_left <= 7) { badge = 'porvencer'; txt = 'Por vencer'; }
+      else if (s.active) { badge = 'activo'; txt = 'Activo'; }
+      h += `<tr>
+        <td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
+        <td><span class="badge ${badge}">${txt}</span></td>
+        <td>${s.plan || '—'}</td>
         <td>${vence}</td>
-        <td>${s.days_left}</td>
-        <td><div class="actions">
-          <button class="ghost small" onclick="renovar('${s.username}')">+30 días</button>
-          <button class="danger" onclick="revocar('${s.username}')">Revocar</button>
+        <td>${s.days_left} días</td>
+        <td><div class="actions" style="justify-content:flex-end">
+          <button class="btn sm ghost" onclick="renovar('${s.username}')">+30 días</button>
+          <button class="btn danger-ghost" onclick="revocar('${s.username}')">Revocar</button>
         </div></td>
       </tr>`;
     }
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
+    h += '</tbody></table>';
+    wrap.innerHTML = h;
   }
+
+  function abrirModal() { document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
+  function cerrarModal() { document.getElementById('overlay').classList.remove('show'); }
 
   async function otorgar() {
     const username = document.getElementById('gUser').value.trim().toLowerCase();
     const days = parseInt(document.getElementById('gDays').value, 10);
-    const plan = document.getElementById('gPlan').value.trim() || 'mensual';
-    if (!username || !days) return showMsg('grantMsg', 'Completa usuario y días', false);
-    const res = await fetch('/api/v1/admin/grant', {
-      method: 'POST', headers: headers(), body: JSON.stringify({ username, days, plan }),
-    });
+    const plan = document.getElementById('gPlan').value;
+    if (!username || !days) return toast('Completa usuario y días', 'err');
+    const res = await fetch('/api/v1/admin/grant', { method: 'POST', headers: headers(), body: JSON.stringify({ username, days, plan }) });
     if (res.ok) {
-      showMsg('grantMsg', `Suscripción otorgada a "${username}" (${days} días)`, true);
+      toast('Acceso otorgado a "' + username + '"', 'ok');
       document.getElementById('gUser').value = '';
-      cargar();
-    } else {
-      showMsg('grantMsg', 'Error al otorgar', false);
-    }
+      cerrarModal(); cargar();
+    } else { toast('Error al otorgar', 'err'); }
   }
 
   async function renovar(username) {
-    await fetch('/api/v1/admin/grant', {
-      method: 'POST', headers: headers(), body: JSON.stringify({ username, days: 30, plan: 'mensual' }),
-    });
-    cargar();
+    const res = await fetch('/api/v1/admin/grant', { method: 'POST', headers: headers(), body: JSON.stringify({ username, days: 30, plan: 'mensual' }) });
+    if (res.ok) { toast('+30 días para "' + username + '"', 'ok'); cargar(); }
   }
 
   async function revocar(username) {
-    if (!confirm(`¿Revocar la suscripción de "${username}"? Perderá el acceso.`)) return;
-    await fetch('/api/v1/admin/revoke', {
-      method: 'POST', headers: headers(), body: JSON.stringify({ username }),
-    });
-    cargar();
+    if (!confirm('¿Revocar el acceso de "' + username + '"?')) return;
+    const res = await fetch('/api/v1/admin/revoke', { method: 'POST', headers: headers(), body: JSON.stringify({ username }) });
+    if (res.ok) { toast('Acceso revocado a "' + username + '"', ''); cargar(); }
   }
 
-  // Auto-login si ya había clave en esta sesión
   if (getKey()) { entrar(); }
 </script>
 </body>
