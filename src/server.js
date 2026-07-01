@@ -7,6 +7,7 @@ const nodePath = require('path');
 const { URL } = require('url');
 const store = require('./store');
 const jellyfin = require('./jellyfin');
+const settings = require('./settings');
 
 const PORT = process.env.PORT || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'cambia-esta-clave-admin';
@@ -92,6 +93,25 @@ const server = http.createServer(async (req, res) => {
     // Listar todos los suscriptores (la "plantilla")
     if (method === 'GET' && path === '/api/v1/admin/subscribers') {
       return json(res, 200, { subscribers: store.list().map(statusFor) });
+    }
+
+    // Configuración del negocio (moneda + precios por plan)
+    if (method === 'GET' && path === '/api/v1/admin/settings') {
+      return json(res, 200, settings.get());
+    }
+    if (method === 'POST' && path === '/api/v1/admin/settings') {
+      const body = await readBody(req);
+      const patch = {};
+      if (typeof body.currency === 'string' && body.currency.trim()) {
+        patch.currency = body.currency.trim();
+      }
+      if (body.prices && typeof body.prices === 'object') {
+        patch.prices = {};
+        for (const k of ['mensual', 'trimestral', 'anual']) {
+          if (body.prices[k] != null) patch.prices[k] = Number(body.prices[k]) || 0;
+        }
+      }
+      return json(res, 200, settings.save(patch));
     }
 
     // Otorgar/extender suscripción: { "username": "juan", "days": 30, "plan": "mensual" }
