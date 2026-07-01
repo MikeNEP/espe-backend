@@ -26,15 +26,28 @@ function daysLeft(expiresAt) {
 
 // Convierte un suscriptor en la respuesta pública de estado.
 function statusFor(sub) {
-  const active = Boolean(sub && sub.expires_at && new Date(sub.expires_at).getTime() > Date.now());
+  const subActive = Boolean(sub && sub.expires_at && new Date(sub.expires_at).getTime() > Date.now());
+  const banned = Boolean(sub && sub.banned);
+  const active = subActive && !banned; // acceso efectivo (la app usa esto)
   return {
     username: sub ? sub.username : null,
     active,
-    status: active ? 'activo' : sub ? 'vencido' : 'inexistente',
+    subActive,
+    banned,
+    status: !sub ? 'inexistente' : banned ? 'baneado' : subActive ? 'activo' : 'vencido',
     plan: sub ? sub.plan : null,
+    phone: sub ? sub.phone || '' : '',
     expires_at: sub ? sub.expires_at : null,
     days_left: sub ? daysLeft(sub.expires_at) : 0,
+    history: sub ? sub.history || [] : [],
   };
+}
+
+// Sincroniza la cuenta en Jellyfin: habilita si tiene acceso, deshabilita si no.
+async function syncJellyfin(sub) {
+  if (!jellyfin.configured() || !sub) return;
+  const enabled = new Date(sub.expires_at).getTime() > Date.now() && !sub.banned;
+  try { await jellyfin.setDisabled(sub.username, !enabled); } catch (e) { /* log */ }
 }
 
 function readBody(req) {
@@ -114,7 +127,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, settings.save(patch));
     }
 
-    // Otorgar/extender suscripción: { "username": "juan", "days": 30, "plan": "mensual" }
+    // Otorgar/extender suscripción: { "username": "juan", "days": 30, "plan": "mensual", "phone": "..." }
     if (method === 'POST' && path === '/api/v1/admin/grant') {
       const body = await readBody(req);
       const username = (body.username || '').trim().toLowerCase();
@@ -122,11 +135,12 @@ const server = http.createServer(async (req, res) => {
       if (!username || !days || days <= 0) {
         return json(res, 400, { error: 'username y days (>0) son requeridos' });
       }
-      const sub = store.grant(username, days, body.plan);
-      // Si Jellyfin está configurado, habilitamos la cuenta al pagar.
-      if (jellyfin.configured()) {
-        try { await jellyfin.setDisabled(username, false); } catch (e) { /* log */ }
-      }
+      const plan = body.plan || 'mensual';
+      // Monto del pago: si no viene, usa el precio del plan de la configuración.
+      let amount = Number(body.amount);
+      if (!amount) amount = Number(settings.get().prices[plan]) || 0;
+      const sub = store.grant(username, days, plan, { phone: body.phone, amount });
+      await syncJellyfin(sub);
       return json(res, 200, statusFor(sub));
     }
 
@@ -137,9 +151,28 @@ const server = http.createServer(async (req, res) => {
       if (!username) return json(res, 400, { error: 'username requerido' });
       const sub = store.revoke(username);
       if (!sub) return json(res, 404, { error: 'el usuario no existe' });
-      if (jellyfin.configured()) {
-        try { await jellyfin.setDisabled(username, true); } catch (e) { /* log */ }
-      }
+      await syncJellyfin(sub);
+      return json(res, 200, statusFor(sub));
+    }
+
+    // Banear / desbanear: { "username": "juan", "banned": true }
+    if (method === 'POST' && path === '/api/v1/admin/ban') {
+      const body = await readBody(req);
+      const username = (body.username || '').trim().toLowerCase();
+      if (!username) return json(res, 400, { error: 'username requerido' });
+      const sub = store.setBanned(username, body.banned !== false);
+      if (!sub) return json(res, 404, { error: 'el usuario no existe' });
+      await syncJellyfin(sub);
+      return json(res, 200, statusFor(sub));
+    }
+
+    // Actualizar teléfono: { "username": "juan", "phone": "+54 9 11 ..." }
+    if (method === 'POST' && path === '/api/v1/admin/phone') {
+      const body = await readBody(req);
+      const username = (body.username || '').trim().toLowerCase();
+      if (!username) return json(res, 400, { error: 'username requerido' });
+      const sub = store.setPhone(username, (body.phone || '').trim());
+      if (!sub) return json(res, 404, { error: 'el usuario no existe' });
       return json(res, 200, statusFor(sub));
     }
 
@@ -154,8 +187,8 @@ const server = http.createServer(async (req, res) => {
 function syncExpired() {
   if (!jellyfin.configured()) return;
   for (const sub of store.list()) {
-    const expired = !sub.expires_at || new Date(sub.expires_at).getTime() <= Date.now();
-    jellyfin.setDisabled(sub.username, expired).catch(() => {});
+    const enabled = new Date(sub.expires_at).getTime() > Date.now() && !sub.banned;
+    jellyfin.setDisabled(sub.username, !enabled).catch(() => {});
   }
 }
 setInterval(syncExpired, 12 * 60 * 60 * 1000);

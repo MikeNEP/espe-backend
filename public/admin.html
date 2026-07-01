@@ -6,122 +6,107 @@
 <title>ESPE Player · Panel de Administración</title>
 <style>
   :root {
-    --bg: #0A0710; --sidebar: #110D1B; --card: #17131F; --card-hover: #1F192E;
-    --border: #2A2440; --border-soft: #221D33; --purple: #A97BFF; --purple-2: #7C3AED;
-    --grad: linear-gradient(135deg, #7C3AED 0%, #A97BFF 100%);
-    --text: #ECE6F5; --muted: #8E82A6; --green: #34D399; --amber: #FBBF24; --red: #FB7185;
-    --shadow: 0 10px 40px rgba(0,0,0,.45);
+    --bg:#0A0710; --sidebar:#110D1B; --card:#17131F; --card-hover:#1F192E; --border:#2A2440; --border-soft:#221D33;
+    --purple:#A97BFF; --purple-2:#7C3AED; --grad:linear-gradient(135deg,#7C3AED 0%,#A97BFF 100%);
+    --text:#ECE6F5; --muted:#8E82A6; --green:#34D399; --amber:#FBBF24; --red:#FB7185; --blue:#60A5FA;
+    --shadow:0 10px 40px rgba(0,0,0,.45);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter','Segoe UI',system-ui,sans-serif; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-thumb { background: #2c2540; border-radius: 8px; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter','Segoe UI',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:#2c2540; border-radius:8px; }
 
-  #login { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(900px 500px at 50% -10%, #1b1030 0%, var(--bg) 60%); padding: 20px; z-index: 50; }
-  .login-card { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 20px; padding: 36px 30px; box-shadow: var(--shadow); text-align: center; }
-  .logo-badge { width: 62px; height: 62px; border-radius: 16px; background: var(--grad); margin: 0 auto 18px;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 26px; color: #fff; box-shadow: 0 8px 24px rgba(124,58,237,.5); }
-  .login-card h1 { font-size: 22px; margin-bottom: 4px; } .login-card h1 b { color: var(--purple); }
-  .login-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  #login { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:radial-gradient(900px 500px at 50% -10%,#1b1030 0%,var(--bg) 60%); padding:20px; z-index:50; }
+  .login-card { width:100%; max-width:380px; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:36px 30px; box-shadow:var(--shadow); text-align:center; }
+  .logo-badge { width:62px; height:62px; border-radius:16px; background:var(--grad); margin:0 auto 18px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:26px; color:#fff; box-shadow:0 8px 24px rgba(124,58,237,.5); }
+  .login-card h1 { font-size:22px; margin-bottom:4px; } .login-card h1 b { color:var(--purple); }
+  .login-card p { color:var(--muted); font-size:14px; margin-bottom:24px; }
 
-  .app { display: none; min-height: 100vh; }
-  .app.show { display: grid; grid-template-columns: 250px 1fr; }
-  aside { background: var(--sidebar); border-right: 1px solid var(--border-soft); padding: 24px 18px;
-    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
-  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; padding: 0 6px; }
-  .brand .logo-badge { width: 40px; height: 40px; border-radius: 11px; font-size: 18px; margin: 0; }
-  .brand .name { font-weight: 700; font-size: 16px; } .brand .name span { color: var(--purple); }
-  nav a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 11px; color: var(--muted);
-    text-decoration: none; font-size: 14.5px; font-weight: 500; margin-bottom: 4px; cursor: pointer; transition: all .15s; }
-  nav a svg { width: 19px; height: 19px; }
-  nav a.active { background: var(--card-hover); color: var(--text); } nav a.active svg { color: var(--purple); }
-  nav a:hover { color: var(--text); }
-  .side-foot { margin-top: auto; color: var(--muted); font-size: 12px; padding: 0 8px; }
-  .side-foot .logout { display: flex; align-items: center; gap: 10px; color: var(--muted); cursor: pointer; padding: 10px 8px; border-radius: 10px; }
-  .side-foot .logout:hover { color: var(--red); }
+  .app { display:none; min-height:100vh; } .app.show { display:grid; grid-template-columns:250px 1fr; }
+  aside { background:var(--sidebar); border-right:1px solid var(--border-soft); padding:24px 18px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .brand { display:flex; align-items:center; gap:12px; margin-bottom:32px; padding:0 6px; }
+  .brand .logo-badge { width:40px; height:40px; border-radius:11px; font-size:18px; margin:0; }
+  .brand .name { font-weight:700; font-size:16px; } .brand .name span { color:var(--purple); }
+  nav a { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:11px; color:var(--muted); text-decoration:none; font-size:14.5px; font-weight:500; margin-bottom:4px; cursor:pointer; transition:all .15s; }
+  nav a svg { width:19px; height:19px; } nav a.active { background:var(--card-hover); color:var(--text); } nav a.active svg { color:var(--purple); } nav a:hover { color:var(--text); }
+  .side-foot { margin-top:auto; color:var(--muted); font-size:12px; padding:0 8px; }
+  .side-foot .logout { display:flex; align-items:center; gap:10px; color:var(--muted); cursor:pointer; padding:10px 8px; border-radius:10px; } .side-foot .logout:hover { color:var(--red); }
 
-  main { padding: 28px 34px; overflow-x: hidden; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; gap: 12px; flex-wrap: wrap; }
-  .topbar h2 { font-size: 22px; } .topbar .sub { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  main { padding:28px 34px; overflow-x:hidden; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; gap:12px; flex-wrap:wrap; }
+  .topbar h2 { font-size:22px; } .topbar .sub { color:var(--muted); font-size:13.5px; margin-top:2px; }
 
-  .btn { display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer; border-radius: 11px;
-    padding: 11px 18px; font-size: 14px; font-weight: 600; color: #fff; background: var(--grad);
-    box-shadow: 0 6px 18px rgba(124,58,237,.35); transition: transform .1s, filter .15s; }
-  .btn:hover { filter: brightness(1.1); } .btn:active { transform: scale(.98); }
-  .btn svg { width: 17px; height: 17px; }
-  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); box-shadow: none; }
-  .btn.sm { padding: 7px 12px; font-size: 13px; box-shadow: none; }
-  .btn.danger-ghost { background: transparent; border: 1px solid rgba(251,113,133,.4); color: var(--red); box-shadow: none; padding: 7px 12px; font-size: 13px; }
-  .btn.danger-ghost:hover { background: rgba(251,113,133,.12); filter: none; }
+  .btn { display:inline-flex; align-items:center; gap:8px; border:none; cursor:pointer; border-radius:11px; padding:11px 18px; font-size:14px; font-weight:600; color:#fff; background:var(--grad); box-shadow:0 6px 18px rgba(124,58,237,.35); transition:transform .1s,filter .15s; }
+  .btn:hover { filter:brightness(1.1); } .btn:active { transform:scale(.98); } .btn svg { width:17px; height:17px; }
+  .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text); box-shadow:none; }
+  .btn.sm { padding:7px 12px; font-size:13px; box-shadow:none; }
+  .icobtn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .icobtn:hover { color:var(--text); border-color:var(--purple-2); } .icobtn svg { width:15px; height:15px; }
+  .icobtn.red:hover { color:var(--red); border-color:var(--red); } .icobtn.amber { color:var(--amber); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-  .kpi { background: var(--card); border: 1px solid var(--border-soft); border-radius: 16px; padding: 18px 20px; }
-  .kpi .ico { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-  .kpi .ico svg { width: 21px; height: 21px; }
-  .kpi .label { color: var(--muted); font-size: 13px; } .kpi .num { font-size: 27px; font-weight: 800; margin-top: 2px; }
-  .ico.p { background: rgba(169,123,255,.15); color: var(--purple); }
-  .ico.g { background: rgba(52,211,153,.15); color: var(--green); }
-  .ico.r { background: rgba(251,113,133,.15); color: var(--red); }
-  .ico.a { background: rgba(251,191,36,.15); color: var(--amber); }
-  .ico.m { background: rgba(96,165,250,.15); color: #60A5FA; }
+  .alert-box { background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(251,191,36,.05)); border:1px solid rgba(251,191,36,.35); border-radius:14px; padding:16px 18px; margin-bottom:22px; display:flex; gap:14px; align-items:flex-start; }
+  .alert-box .ai { color:var(--amber); flex-shrink:0; margin-top:2px; }
+  .alert-box .title { font-weight:700; color:var(--amber); margin-bottom:6px; }
+  .alert-box .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .chip { background:rgba(251,191,36,.14); color:var(--amber); border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; }
 
-  .revenue { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 26px; }
-  .rev-card { background: linear-gradient(135deg, #1a1330, #17131F); border: 1px solid var(--border-soft); border-radius: 16px; padding: 20px 22px; }
-  .rev-card .label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
-  .rev-card .big { font-size: 32px; font-weight: 800; margin-top: 6px; }
-  .rev-card .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px; }
+  .kpi { background:var(--card); border:1px solid var(--border-soft); border-radius:16px; padding:18px 20px; }
+  .kpi .ico { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; } .kpi .ico svg { width:21px; height:21px; }
+  .kpi .label { color:var(--muted); font-size:13px; } .kpi .num { font-size:27px; font-weight:800; margin-top:2px; }
+  .ico.p { background:rgba(169,123,255,.15); color:var(--purple); } .ico.g { background:rgba(52,211,153,.15); color:var(--green); }
+  .ico.r { background:rgba(251,113,133,.15); color:var(--red); } .ico.a { background:rgba(251,191,36,.15); color:var(--amber); }
 
-  .panel { background: var(--card); border: 1px solid var(--border-soft); border-radius: 16px; overflow: hidden; }
-  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border-soft); gap: 14px; flex-wrap: wrap; }
-  .panel-head h3 { font-size: 16px; }
-  .tabs { display: flex; gap: 6px; background: var(--bg); padding: 4px; border-radius: 10px; }
-  .tabs button { border: none; background: transparent; color: var(--muted); padding: 7px 13px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
-  .tabs button.active { background: var(--card-hover); color: var(--text); }
-  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .search { position: relative; }
-  .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
-  .search input { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px 9px 36px; color: var(--text); font-size: 14px; width: 210px; outline: none; }
-  .search input:focus { border-color: var(--purple-2); }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 13px 20px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
-  td { padding: 14px 20px; border-top: 1px solid var(--border-soft); font-size: 14px; }
-  tbody tr:hover { background: var(--card-hover); }
-  .user-cell { display: flex; align-items: center; gap: 11px; }
-  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--grad); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; text-transform: uppercase; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  .badge.activo { background: rgba(52,211,153,.13); color: var(--green); }
-  .badge.vencido { background: rgba(251,113,133,.13); color: var(--red); }
-  .badge.porvencer { background: rgba(251,191,36,.13); color: var(--amber); }
-  .actions { display: flex; gap: 8px; }
-  .empty { text-align: center; padding: 46px 20px; color: var(--muted); }
+  .revenue { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:26px; }
+  .rev-card { background:linear-gradient(135deg,#1a1330,#17131F); border:1px solid var(--border-soft); border-radius:16px; padding:20px 22px; }
+  .rev-card .label { color:var(--muted); font-size:13px; display:flex; align-items:center; gap:8px; }
+  .rev-card .big { font-size:32px; font-weight:800; margin-top:6px; } .rev-card .hint { color:var(--muted); font-size:12px; margin-top:4px; }
 
-  .overlay { position: fixed; inset: 0; background: rgba(5,3,10,.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 40; padding: 20px; }
-  .overlay.show { display: flex; }
-  .modal { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
-  .modal-head { padding: 20px 22px; border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; }
-  .modal-head h3 { font-size: 17px; } .modal-head .x { cursor: pointer; color: var(--muted); }
-  .modal-body { padding: 22px; }
-  .field { margin-bottom: 16px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; }
-  input.inp, select.inp { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; outline: none; }
-  input.inp:focus, select.inp:focus { border-color: var(--purple-2); }
-  .modal-foot { padding: 0 22px 22px; display: flex; gap: 10px; justify-content: flex-end; }
+  .panel { background:var(--card); border:1px solid var(--border-soft); border-radius:16px; overflow:hidden; }
+  .panel-head { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--border-soft); gap:14px; flex-wrap:wrap; }
+  .panel-head h3 { font-size:16px; }
+  .tabs { display:flex; gap:6px; background:var(--bg); padding:4px; border-radius:10px; flex-wrap:wrap; }
+  .tabs button { border:none; background:transparent; color:var(--muted); padding:7px 13px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
+  .tabs button.active { background:var(--card-hover); color:var(--text); }
+  .tools { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .search { position:relative; } .search svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--muted); }
+  .search input { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:9px 12px 9px 36px; color:var(--text); font-size:14px; width:200px; outline:none; } .search input:focus { border-color:var(--purple-2); }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; padding:13px 20px; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; }
+  td { padding:12px 20px; border-top:1px solid var(--border-soft); font-size:14px; }
+  tbody tr:hover { background:var(--card-hover); }
+  .user-cell { display:flex; align-items:center; gap:11px; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:var(--grad); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#fff; text-transform:uppercase; }
+  .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:999px; font-size:12px; font-weight:700; }
+  .badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .badge.activo { background:rgba(52,211,153,.13); color:var(--green); } .badge.vencido { background:rgba(251,113,133,.13); color:var(--red); }
+  .badge.porvencer { background:rgba(251,191,36,.13); color:var(--amber); } .badge.baneado { background:rgba(148,148,163,.18); color:#c9c4d6; }
+  .phone-link { color:var(--purple); text-decoration:none; } .phone-link:hover { text-decoration:underline; }
+  .actions { display:flex; gap:7px; justify-content:flex-end; align-items:center; }
+  .empty { text-align:center; padding:46px 20px; color:var(--muted); }
 
-  .view { display: none; } .view.show { display: block; }
-  .cfg-card { background: var(--card); border: 1px solid var(--border-soft); border-radius: 16px; padding: 24px; max-width: 560px; }
-  .cfg-card h3 { margin-bottom: 4px; } .cfg-card .desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  .price-row { display: flex; gap: 12px; margin-bottom: 14px; }
-  .price-row > div { flex: 1; }
+  .overlay { position:fixed; inset:0; background:rgba(5,3,10,.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:40; padding:20px; }
+  .overlay.show { display:flex; }
+  .modal { width:100%; max-width:460px; background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); overflow:hidden; }
+  .modal-head { padding:20px 22px; border-bottom:1px solid var(--border-soft); display:flex; justify-content:space-between; align-items:center; } .modal-head h3 { font-size:17px; } .modal-head .x { cursor:pointer; color:var(--muted); }
+  .modal-body { padding:22px; max-height:60vh; overflow:auto; }
+  .field { margin-bottom:16px; } label { display:block; font-size:13px; color:var(--muted); margin-bottom:7px; }
+  input.inp,select.inp { width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:15px; outline:none; } input.inp:focus,select.inp:focus { border-color:var(--purple-2); }
+  .modal-foot { padding:0 22px 22px; display:flex; gap:10px; justify-content:flex-end; }
+  .hist-item { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border-soft); font-size:14px; }
+  .hist-item:last-child { border-bottom:none; } .hist-item .meta { color:var(--muted); font-size:12px; }
+  .hist-act { font-weight:600; } .hist-act.pago { color:var(--green); } .hist-act.revocado { color:var(--red); } .hist-act.baneado { color:#c9c4d6; } .hist-act.desbaneado { color:var(--blue); }
 
-  #toasts { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }
-  .toast { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--purple); border-radius: 12px; padding: 13px 18px; font-size: 14px; box-shadow: var(--shadow); min-width: 240px; animation: slidein .25s ease; }
-  .toast.ok { border-left-color: var(--green); } .toast.err { border-left-color: var(--red); }
-  @keyframes slidein { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-  @media (max-width: 820px) { .app.show { grid-template-columns: 1fr; } aside { display: none; } .kpis { grid-template-columns: repeat(2,1fr); } .revenue { grid-template-columns: 1fr; } main { padding: 20px 16px; } }
+  .view { display:none; } .view.show { display:block; }
+  .cfg-card { background:var(--card); border:1px solid var(--border-soft); border-radius:16px; padding:24px; max-width:560px; }
+  .cfg-card h3 { margin-bottom:4px; } .cfg-card .desc { color:var(--muted); font-size:13px; margin-bottom:20px; }
+  .price-row { display:flex; gap:12px; margin-bottom:14px; } .price-row > div { flex:1; }
+
+  #toasts { position:fixed; top:20px; right:20px; display:flex; flex-direction:column; gap:10px; z-index:60; }
+  .toast { background:var(--card); border:1px solid var(--border); border-left:4px solid var(--purple); border-radius:12px; padding:13px 18px; font-size:14px; box-shadow:var(--shadow); min-width:240px; animation:slidein .25s ease; }
+  .toast.ok { border-left-color:var(--green); } .toast.err { border-left-color:var(--red); }
+  @keyframes slidein { from { transform:translateX(40px); opacity:0; } to { transform:none; opacity:1; } }
+  @media (max-width:860px){ .app.show{ grid-template-columns:1fr; } aside{ display:none; } .kpis{ grid-template-columns:repeat(2,1fr); } .revenue{ grid-template-columns:1fr; } main{ padding:20px 16px; } }
 </style>
 </head>
 <body>
@@ -129,8 +114,7 @@
 <div id="login">
   <div class="login-card">
     <div class="logo-badge">E</div>
-    <h1>ESPE <b>Player</b></h1>
-    <p>Panel de administración</p>
+    <h1>ESPE <b>Player</b></h1><p>Panel de administración</p>
     <div class="field" style="text-align:left"><label>Clave de administrador</label>
       <input id="adminKey" class="inp" type="password" placeholder="Ingresa tu ADMIN_KEY" onkeydown="if(event.key==='Enter')entrar()" /></div>
     <button class="btn" style="width:100%; justify-content:center" onclick="entrar()">Ingresar</button>
@@ -151,12 +135,13 @@
   </aside>
 
   <main>
-    <!-- VISTA DASHBOARD -->
     <div class="view show" id="view-dashboard">
       <div class="topbar">
         <div><h2>Panel de suscripciones</h2><div class="sub">Gestiona los accesos y las finanzas de tu servicio</div></div>
         <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
       </div>
+
+      <div id="alertBox"></div>
 
       <div class="kpis">
         <div class="kpi"><div class="ico p"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="label">Total</div><div class="num" id="kTotal">0</div></div>
@@ -167,7 +152,7 @@
 
       <div class="revenue">
         <div class="rev-card"><div class="label"><svg width="16" height="16" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Ingresos activos</div><div class="big" id="revActivos">$0</div><div class="hint">Suma del precio de los planes de suscriptores activos</div></div>
-        <div class="rev-card"><div class="label"><svg width="16" height="16" fill="none" stroke="#60A5FA" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> MRR estimado (mensual)</div><div class="big" id="revMRR">$0</div><div class="hint">Ingreso mensual recurrente normalizado por plan</div></div>
+        <div class="rev-card"><div class="label"><svg width="16" height="16" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> MRR estimado (mensual)</div><div class="big" id="revMRR">$0</div><div class="hint">Ingreso mensual recurrente normalizado por plan</div></div>
       </div>
 
       <div class="panel">
@@ -177,9 +162,10 @@
             <button data-f="activo" onclick="filtro('activo')">Activos</button>
             <button data-f="porvencer" onclick="filtro('porvencer')">Por vencer</button>
             <button data-f="vencido" onclick="filtro('vencido')">Vencidos</button>
+            <button data-f="baneado" onclick="filtro('baneado')">Baneados</button>
           </div>
           <div class="tools">
-            <div class="search"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="buscar" placeholder="Buscar usuario..." oninput="render()" /></div>
+            <div class="search"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="buscar" placeholder="Buscar..." oninput="render()" /></div>
             <button class="btn ghost sm" onclick="exportarCSV()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> CSV</button>
           </div>
         </div>
@@ -187,12 +173,10 @@
       </div>
     </div>
 
-    <!-- VISTA CONFIGURACIÓN -->
     <div class="view" id="view-config">
       <div class="topbar"><div><h2>Configuración</h2><div class="sub">Precios y moneda de tu servicio</div></div></div>
       <div class="cfg-card">
-        <h3>Precios de los planes</h3>
-        <div class="desc">Se usan para calcular los ingresos estimados y el MRR.</div>
+        <h3>Precios de los planes</h3><div class="desc">Se usan para calcular ingresos, MRR y el monto de cada pago.</div>
         <div class="field"><label>Símbolo de moneda</label><input id="cCurrency" class="inp" style="max-width:120px" value="$" /></div>
         <div class="price-row">
           <div><label>Mensual</label><input id="cMensual" class="inp" type="number" value="0" /></div>
@@ -205,132 +189,168 @@
   </main>
 </div>
 
+<!-- Modal nuevo suscriptor -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <div class="modal-head"><h3>Nuevo suscriptor</h3><div class="x" onclick="cerrarModal()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-head"><h3>Nuevo suscriptor</h3><div class="x" onclick="cerrar('overlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
     <div class="modal-body">
       <div class="field"><label>Usuario (el mismo de Jellyfin)</label><input id="gUser" class="inp" placeholder="ej: juan" /></div>
+      <div class="field"><label>Teléfono (opcional)</label><input id="gPhone" class="inp" placeholder="ej: +54 9 11 1234-5678" /></div>
       <div class="field" style="display:flex; gap:12px">
         <div style="flex:1"><label>Días</label><input id="gDays" class="inp" type="number" value="30" /></div>
         <div style="flex:1"><label>Plan</label><select id="gPlan" class="inp"><option>mensual</option><option>trimestral</option><option>anual</option></select></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn ghost" onclick="cerrarModal()">Cancelar</button><button class="btn" onclick="otorgar()">Otorgar acceso</button></div>
+    <div class="modal-foot"><button class="btn ghost" onclick="cerrar('overlay')">Cancelar</button><button class="btn" onclick="otorgar()">Otorgar acceso</button></div>
+  </div>
+</div>
+
+<!-- Modal editar teléfono -->
+<div class="overlay" id="phoneOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3>Editar teléfono</h3><div class="x" onclick="cerrar('phoneOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-body">
+      <div class="field"><label>Usuario</label><input id="pUser" class="inp" readonly /></div>
+      <div class="field"><label>Teléfono</label><input id="pPhone" class="inp" placeholder="ej: +54 9 11 1234-5678" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="cerrar('phoneOverlay')">Cancelar</button><button class="btn" onclick="guardarTel()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- Modal historial -->
+<div class="overlay" id="histOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3 id="histTitle">Historial de pagos</h3><div class="x" onclick="cerrar('histOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-body" id="histBody"></div>
   </div>
 </div>
 
 <div id="toasts"></div>
 
 <script>
-  const KEY = 'espe_admin_key';
-  let SUBS = [], CFG = { currency: '$', prices: { mensual: 0, trimestral: 0, anual: 0 } }, FILTER = 'todos';
+  const KEY='espe_admin_key';
+  let SUBS=[], CFG={currency:'$',prices:{mensual:0,trimestral:0,anual:0}}, FILTER='todos';
+  const getKey=()=>sessionStorage.getItem(KEY)||'';
+  const headers=()=>({'x-admin-key':getKey(),'Content-Type':'application/json'});
+  const money=(n)=>CFG.currency+' '+(Math.round(n)).toLocaleString('es-AR');
+  const digits=(s)=>(s||'').replace(/[^0-9]/g,'');
 
-  const getKey = () => sessionStorage.getItem(KEY) || '';
-  const headers = () => ({ 'x-admin-key': getKey(), 'Content-Type': 'application/json' });
-  const money = (n) => CFG.currency + ' ' + (Math.round(n)).toLocaleString('es-AR');
+  function toast(m,t){ const e=document.createElement('div'); e.className='toast '+(t||''); e.textContent=m; document.getElementById('toasts').appendChild(e); setTimeout(()=>e.remove(),3200); }
 
-  function toast(msg, type) {
-    const t = document.createElement('div'); t.className = 'toast ' + (type || ''); t.textContent = msg;
-    document.getElementById('toasts').appendChild(t); setTimeout(() => t.remove(), 3200);
-  }
-
-  async function entrar() {
-    const key = document.getElementById('adminKey').value.trim(); if (!key) return;
-    sessionStorage.setItem(KEY, key);
-    const res = await fetch('/api/v1/admin/subscribers', { headers: headers() });
-    if (res.status === 401) { sessionStorage.removeItem(KEY); return toast('Clave incorrecta', 'err'); }
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('app').classList.add('show');
+  async function entrar(){
+    const key=document.getElementById('adminKey').value.trim(); if(!key) return;
+    sessionStorage.setItem(KEY,key);
+    const r=await fetch('/api/v1/admin/subscribers',{headers:headers()});
+    if(r.status===401){ sessionStorage.removeItem(KEY); return toast('Clave incorrecta','err'); }
+    document.getElementById('login').style.display='none'; document.getElementById('app').classList.add('show');
     await cargarConfig(); cargar();
   }
-  function salir() { sessionStorage.removeItem(KEY); location.reload(); }
+  function salir(){ sessionStorage.removeItem(KEY); location.reload(); }
+  function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); }
 
-  function verVista(v) {
-    document.querySelectorAll('.view').forEach(e => e.classList.remove('show'));
-    document.getElementById('view-' + v).classList.add('show');
-    document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === v));
+  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; } }
+  async function guardarConfig(){ const b={currency:document.getElementById('cCurrency').value.trim()||'$',prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value}}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
+
+  async function cargar(){ const r=await fetch('/api/v1/admin/subscribers',{headers:headers()}); if(!r.ok) return; SUBS=(await r.json()).subscribers||[]; stats(); renderAlerts(); render(); }
+
+  const priceOf=(p)=>CFG.prices[p]!=null?CFG.prices[p]:(CFG.prices.mensual||0);
+  const mrrOf=(p)=>{ const v=priceOf(p); if(p==='anual') return v/12; if(p==='trimestral') return v/3; return v; };
+  function estado(s){ if(s.banned) return 'baneado'; if(!s.subActive) return 'vencido'; if(s.days_left<=7) return 'porvencer'; return 'activo'; }
+
+  function stats(){
+    const act=SUBS.filter(s=>s.subActive&&!s.banned);
+    document.getElementById('kTotal').textContent=SUBS.length;
+    document.getElementById('kActivos').textContent=act.length;
+    document.getElementById('kVencidos').textContent=SUBS.filter(s=>!s.subActive&&!s.banned).length;
+    document.getElementById('kPorVencer').textContent=act.filter(s=>s.days_left<=7).length;
+    document.getElementById('revActivos').textContent=money(act.reduce((a,s)=>a+priceOf(s.plan),0));
+    document.getElementById('revMRR').textContent=money(act.reduce((a,s)=>a+mrrOf(s.plan),0));
   }
 
-  async function cargarConfig() {
-    const res = await fetch('/api/v1/admin/settings', { headers: headers() });
-    if (res.ok) {
-      CFG = await res.json();
-      document.getElementById('cCurrency').value = CFG.currency;
-      document.getElementById('cMensual').value = CFG.prices.mensual;
-      document.getElementById('cTrimestral').value = CFG.prices.trimestral;
-      document.getElementById('cAnual').value = CFG.prices.anual;
+  function renderAlerts(){
+    const box=document.getElementById('alertBox');
+    const soon=SUBS.filter(s=>!s.banned&&s.subActive&&s.days_left<=7).sort((a,b)=>a.days_left-b.days_left);
+    if(soon.length===0){ box.innerHTML=''; return; }
+    let chips=soon.map(s=>`<span class="chip">${s.username} · ${s.days_left}d</span>`).join('');
+    box.innerHTML=`<div class="alert-box"><div class="ai"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div style="flex:1"><div class="title">${soon.length} suscripción(es) por vencer pronto</div>
+      <div style="color:var(--muted); font-size:13px">Renueva antes de que pierdan el acceso.</div><div class="chips">${chips}</div></div></div>`;
+  }
+
+  function filtro(f){ FILTER=f; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); render(); }
+
+  function render(){
+    const q=document.getElementById('buscar').value.trim().toLowerCase();
+    let list=SUBS.filter(s=>s.username.includes(q)||digits(s.phone).includes(digits(q)));
+    if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
+    const wrap=document.getElementById('tablaWrap');
+    if(list.length===0){ wrap.innerHTML='<div class="empty">'+(SUBS.length===0?'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.':'Sin resultados.')+'</div>'; return; }
+    let h='<table><thead><tr><th>Usuario</th><th>Teléfono</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    for(const s of list){
+      const vence=s.expires_at?new Date(s.expires_at).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}):'—';
+      const e=estado(s); const txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
+      const tel=s.phone?`<a class="phone-link" href="https://wa.me/${digits(s.phone)}" target="_blank">${s.phone}</a>`:'—';
+      const banIcon=s.banned
+        ? `<button class="icobtn amber" title="Desbanear" onclick="banear('${s.username}',false)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>`
+        : `<button class="icobtn" title="Banear" onclick="banear('${s.username}',true)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg></button>`;
+      h+=`<tr>
+        <td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
+        <td>${tel}</td>
+        <td><span class="badge ${e}">${txt}</span></td>
+        <td>${s.plan||'—'}</td><td>${vence}</td><td>${s.days_left}d</td>
+        <td><div class="actions">
+          <button class="btn sm ghost" onclick="renovar('${s.username}')">+30d</button>
+          <button class="icobtn" title="Editar teléfono" onclick="editarTel('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+          <button class="icobtn" title="Historial" onclick="verHist('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+          ${banIcon}
+          <button class="icobtn red" title="Revocar" onclick="revocar('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div></td></tr>`;
     }
-  }
-  async function guardarConfig() {
-    const body = { currency: document.getElementById('cCurrency').value.trim() || '$',
-      prices: { mensual: +document.getElementById('cMensual').value, trimestral: +document.getElementById('cTrimestral').value, anual: +document.getElementById('cAnual').value } };
-    const res = await fetch('/api/v1/admin/settings', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-    if (res.ok) { CFG = await res.json(); toast('Configuración guardada', 'ok'); stats(); render(); }
-    else toast('Error al guardar', 'err');
+    wrap.innerHTML=h+'</tbody></table>';
   }
 
-  async function cargar() {
-    const res = await fetch('/api/v1/admin/subscribers', { headers: headers() }); if (!res.ok) return;
-    SUBS = (await res.json()).subscribers || []; stats(); render();
+  function abrirModal(){ document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
+  function cerrar(id){ document.getElementById(id).classList.remove('show'); }
+
+  async function otorgar(){
+    const username=document.getElementById('gUser').value.trim().toLowerCase();
+    const days=parseInt(document.getElementById('gDays').value,10);
+    const plan=document.getElementById('gPlan').value;
+    const phone=document.getElementById('gPhone').value.trim();
+    if(!username||!days) return toast('Completa usuario y días','err');
+    const r=await fetch('/api/v1/admin/grant',{method:'POST',headers:headers(),body:JSON.stringify({username,days,plan,phone})});
+    if(r.ok){ toast('Acceso otorgado a "'+username+'"','ok'); document.getElementById('gUser').value=''; document.getElementById('gPhone').value=''; cerrar('overlay'); cargar(); }
+    else toast('Error al otorgar','err');
+  }
+  async function renovar(u){ const r=await fetch('/api/v1/admin/grant',{method:'POST',headers:headers(),body:JSON.stringify({username:u,days:30,plan:'mensual'})}); if(r.ok){ toast('+30 días para "'+u+'"','ok'); cargar(); } }
+  async function revocar(u){ if(!confirm('¿Revocar el acceso de "'+u+'"?')) return; const r=await fetch('/api/v1/admin/revoke',{method:'POST',headers:headers(),body:JSON.stringify({username:u})}); if(r.ok){ toast('Acceso revocado a "'+u+'"'); cargar(); } }
+  async function banear(u,estado){ if(estado&&!confirm('¿Banear a "'+u+'"? No podrá acceder aunque tenga suscripción.')) return; const r=await fetch('/api/v1/admin/ban',{method:'POST',headers:headers(),body:JSON.stringify({username:u,banned:estado})}); if(r.ok){ toast(estado?'"'+u+'" baneado':'"'+u+'" desbaneado', estado?'':'ok'); cargar(); } }
+
+  function editarTel(u){ const s=SUBS.find(x=>x.username===u); document.getElementById('pUser').value=u; document.getElementById('pPhone').value=s?s.phone||'':''; document.getElementById('phoneOverlay').classList.add('show'); document.getElementById('pPhone').focus(); }
+  async function guardarTel(){ const u=document.getElementById('pUser').value; const phone=document.getElementById('pPhone').value.trim(); const r=await fetch('/api/v1/admin/phone',{method:'POST',headers:headers(),body:JSON.stringify({username:u,phone})}); if(r.ok){ toast('Teléfono actualizado','ok'); cerrar('phoneOverlay'); cargar(); } else toast('Error','err'); }
+
+  function verHist(u){
+    const s=SUBS.find(x=>x.username===u); const hist=(s&&s.history)?s.history.slice().reverse():[];
+    document.getElementById('histTitle').textContent='Historial · '+u;
+    const body=document.getElementById('histBody');
+    if(hist.length===0){ body.innerHTML='<div class="empty">Sin movimientos todavía.</div>'; }
+    else { body.innerHTML=hist.map(h=>{
+      const fecha=new Date(h.date).toLocaleString('es-AR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const amount=h.amount?money(h.amount):'';
+      const detalle=h.action==='pago'?`+${h.days} días · ${h.plan}`:h.action;
+      return `<div class="hist-item"><div><div class="hist-act ${h.action}">${h.action.toUpperCase()}</div><div class="meta">${detalle}</div></div><div style="text-align:right"><div>${amount}</div><div class="meta">${fecha}</div></div></div>`;
+    }).join(''); }
+    document.getElementById('histOverlay').classList.add('show');
   }
 
-  function priceOf(plan) { return CFG.prices[plan] != null ? CFG.prices[plan] : (CFG.prices.mensual || 0); }
-  function mrrOf(plan) { const p = priceOf(plan); if (plan === 'anual') return p / 12; if (plan === 'trimestral') return p / 3; return p; }
-
-  function stats() {
-    const act = SUBS.filter(s => s.active);
-    document.getElementById('kTotal').textContent = SUBS.length;
-    document.getElementById('kActivos').textContent = act.length;
-    document.getElementById('kVencidos').textContent = SUBS.length - act.length;
-    document.getElementById('kPorVencer').textContent = act.filter(s => s.days_left <= 7).length;
-    document.getElementById('revActivos').textContent = money(act.reduce((a, s) => a + priceOf(s.plan), 0));
-    document.getElementById('revMRR').textContent = money(act.reduce((a, s) => a + mrrOf(s.plan), 0));
+  function exportarCSV(){
+    const rows=[['usuario','telefono','estado','plan','vence','dias_restantes']];
+    SUBS.forEach(s=>rows.push([s.username,s.phone||'',estado(s),s.plan||'',s.expires_at||'',s.days_left]));
+    const csv=rows.map(r=>r.join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='suscriptores-espe.csv'; a.click();
   }
 
-  function estado(s) { if (s.active && s.days_left <= 7) return 'porvencer'; if (s.active) return 'activo'; return 'vencido'; }
-  function filtro(f) { FILTER = f; document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.f === f)); render(); }
-
-  function render() {
-    const q = document.getElementById('buscar').value.trim().toLowerCase();
-    let list = SUBS.filter(s => s.username.includes(q));
-    if (FILTER !== 'todos') list = list.filter(s => estado(s) === FILTER);
-    const wrap = document.getElementById('tablaWrap');
-    if (list.length === 0) { wrap.innerHTML = '<div class="empty">' + (SUBS.length === 0 ? 'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.' : 'Sin resultados.') + '</div>'; return; }
-    let h = '<table><thead><tr><th>Usuario</th><th>Estado</th><th>Plan</th><th>Vence</th><th>Días restantes</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
-    for (const s of list) {
-      const vence = s.expires_at ? new Date(s.expires_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-      const e = estado(s); const txt = e === 'activo' ? 'Activo' : e === 'porvencer' ? 'Por vencer' : 'Vencido';
-      h += `<tr><td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
-        <td><span class="badge ${e}">${txt}</span></td><td>${s.plan || '—'}</td><td>${vence}</td><td>${s.days_left} días</td>
-        <td><div class="actions" style="justify-content:flex-end"><button class="btn sm ghost" onclick="renovar('${s.username}')">+30 días</button><button class="btn danger-ghost" onclick="revocar('${s.username}')">Revocar</button></div></td></tr>`;
-    }
-    wrap.innerHTML = h + '</tbody></table>';
-  }
-
-  function abrirModal() { document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
-  function cerrarModal() { document.getElementById('overlay').classList.remove('show'); }
-
-  async function otorgar() {
-    const username = document.getElementById('gUser').value.trim().toLowerCase();
-    const days = parseInt(document.getElementById('gDays').value, 10);
-    const plan = document.getElementById('gPlan').value;
-    if (!username || !days) return toast('Completa usuario y días', 'err');
-    const res = await fetch('/api/v1/admin/grant', { method: 'POST', headers: headers(), body: JSON.stringify({ username, days, plan }) });
-    if (res.ok) { toast('Acceso otorgado a "' + username + '"', 'ok'); document.getElementById('gUser').value = ''; cerrarModal(); cargar(); }
-    else toast('Error al otorgar', 'err');
-  }
-  async function renovar(u) { const r = await fetch('/api/v1/admin/grant', { method: 'POST', headers: headers(), body: JSON.stringify({ username: u, days: 30, plan: 'mensual' }) }); if (r.ok) { toast('+30 días para "' + u + '"', 'ok'); cargar(); } }
-  async function revocar(u) { if (!confirm('¿Revocar el acceso de "' + u + '"?')) return; const r = await fetch('/api/v1/admin/revoke', { method: 'POST', headers: headers(), body: JSON.stringify({ username: u }) }); if (r.ok) { toast('Acceso revocado a "' + u + '"'); cargar(); } }
-
-  function exportarCSV() {
-    const rows = [['usuario', 'estado', 'plan', 'vence', 'dias_restantes']];
-    SUBS.forEach(s => rows.push([s.username, estado(s), s.plan || '', s.expires_at || '', s.days_left]));
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'suscriptores-espe.csv'; a.click();
-  }
-
-  if (getKey()) { entrar(); }
+  if(getKey()){ entrar(); }
 </script>
 </body>
 </html>
