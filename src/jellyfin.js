@@ -7,6 +7,8 @@
 //   JELLYFIN_API_KEY  una API key de administrador de Jellyfin
 const JELLYFIN_URL = (process.env.JELLYFIN_URL || '').replace(/\/$/, '');
 const JELLYFIN_API_KEY = process.env.JELLYFIN_API_KEY || '';
+const TIMEOUT_MS = parseInt(process.env.JELLYFIN_TIMEOUT_MS, 10) || 10000;
+const MAX_RETRIES = parseInt(process.env.JELLYFIN_RETRIES, 10) || 2;
 
 function configured() {
   return Boolean(JELLYFIN_URL && JELLYFIN_API_KEY);
@@ -19,14 +21,45 @@ function headers() {
   };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// fetch con timeout y reintentos con backoff exponencial.
+// Reintenta ante errores de red y respuestas 5xx (problemas transitorios).
+async function jfFetch(pathAndQuery, options = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(`${JELLYFIN_URL}${pathAndQuery}`, {
+        ...options,
+        headers: { ...headers(), ...(options.headers || {}) },
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (res.status >= 500 && attempt < MAX_RETRIES) {
+        await sleep(300 * Math.pow(2, attempt));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+      if (attempt < MAX_RETRIES) {
+        await sleep(300 * Math.pow(2, attempt));
+        continue;
+      }
+    }
+  }
+  throw lastErr || new Error('Jellyfin: fallo de red');
+}
+
 // Busca el Id interno de Jellyfin a partir del nombre de usuario.
 async function findUserId(username) {
-  const res = await fetch(`${JELLYFIN_URL}/Users`, { headers: headers() });
+  const res = await jfFetch('/Users');
   if (!res.ok) throw new Error(`Jellyfin /Users devolvió ${res.status}`);
   const users = await res.json();
-  const u = users.find(
-    (x) => (x.Name || '').toLowerCase() === username.toLowerCase(),
-  );
+  const u = users.find((x) => (x.Name || '').toLowerCase() === username.toLowerCase());
   return u ? u.Id : null;
 }
 
@@ -36,7 +69,7 @@ async function setDisabled(username, disabled, maxSessions) {
   const userId = await findUserId(username);
   if (!userId) throw new Error(`Usuario "${username}" no existe en Jellyfin`);
 
-  const userRes = await fetch(`${JELLYFIN_URL}/Users/${userId}`, { headers: headers() });
+  const userRes = await jfFetch(`/Users/${userId}`);
   if (!userRes.ok) throw new Error(`No se pudo leer el usuario (${userRes.status})`);
   const user = await userRes.json();
   const policy = user.Policy || {};
@@ -46,12 +79,22 @@ async function setDisabled(username, disabled, maxSessions) {
     policy.MaxActiveSessions = maxSessions;
   }
 
-  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Policy`, {
+  const res = await jfFetch(`/Users/${userId}/Policy`, {
     method: 'POST',
-    headers: headers(),
     body: JSON.stringify(policy),
   });
   if (!res.ok) throw new Error(`No se pudo actualizar la policy (${res.status})`);
+  return true;
+}
+
+// Fija la contraseña de un usuario existente (paso separado, compatible con
+// versiones de Jellyfin que no aceptan la contraseña al crear).
+async function setPassword(userId, newPassword) {
+  const res = await jfFetch(`/Users/${userId}/Password`, {
+    method: 'POST',
+    body: JSON.stringify({ NewPw: newPassword, ResetPassword: false }),
+  });
+  if (!res.ok) throw new Error(`No se pudo fijar la contraseña (${res.status})`);
   return true;
 }
 
@@ -60,13 +103,17 @@ async function createUser(username, password) {
   if (!configured()) throw new Error('Jellyfin no está configurado');
   const existing = await findUserId(username);
   if (existing) throw new Error(`El usuario "${username}" ya existe en Jellyfin`);
-  const res = await fetch(`${JELLYFIN_URL}/Users/New`, {
+  const res = await jfFetch('/Users/New', {
     method: 'POST',
-    headers: headers(),
     body: JSON.stringify({ Name: username, Password: password || '' }),
   });
   if (!res.ok) throw new Error(`No se pudo crear el usuario (${res.status})`);
-  return res.json();
+  const created = await res.json();
+  // Segundo paso: algunas versiones ignoran Password en /Users/New.
+  if (password && created && created.Id) {
+    try { await setPassword(created.Id, password); } catch (e) { /* la cuenta ya existe */ }
+  }
+  return created;
 }
 
-module.exports = { configured, setDisabled, findUserId, createUser };
+module.exports = { configured, setDisabled, findUserId, createUser, setPassword };

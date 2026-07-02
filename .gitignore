@@ -2,4 +2,8 @@ node_modules/
 .env
 data/subscribers.json
 data/settings.json
+data/payments.json
+data/audit.log
+data/audit.log.1
+data/backups/
 *.log

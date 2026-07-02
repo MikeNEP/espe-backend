@@ -7,8 +7,21 @@ services:
       - "8080:8080"
     environment:
       - ADMIN_KEY=cambia-esta-clave-admin
-      # --- Fase Pro: descomenta para conectar con Jellyfin ---
+      # Recomendado: protege la consulta de estado de la app
+      # - APP_KEY=una-clave-para-la-app
+      # - APP_HMAC_SECRET=un-secreto-para-firmar-respuestas
+      # Si corres detrás de un reverse proxy:
+      # - TRUST_PROXY=true
+      # - ALLOWED_ORIGINS=https://panel.tudominio.com
+      # --- Jellyfin (el candado real) ---
       # - JELLYFIN_URL=http://jellyfin:8096
       # - JELLYFIN_API_KEY=tu-api-key-de-jellyfin
+      # --- Notificaciones ---
+      # - NOTIFY_PROVIDER=telegram
+      # - TELEGRAM_BOT_TOKEN=...
+      # - TELEGRAM_CHAT_ID=...
+      # --- Mercado Pago ---
+      # - MP_ACCESS_TOKEN=...
+      # - MP_WEBHOOK_SECRET=...
     volumes:
       - ./data:/app/data
