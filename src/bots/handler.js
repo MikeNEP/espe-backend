@@ -5,6 +5,7 @@ const requests = require('../requests');
 const settings = require('../settings');
 const notifier = require('../notifier');
 const logger = require('../logger');
+const jellyfin = require('../jellyfin');
 
 function fmtDate(ms) {
   try {
@@ -29,12 +30,40 @@ function helpText(cfg) {
   const p = cfg.requests.prefix;
   const biz = cfg.business || 'ESPE Player';
   return (
-    `🎬 *${biz}* — Pedidos\n\n` +
+    `🎬 *${biz}*\n\n` +
     `• ${p}pedir <título> — pide una película o serie\n` +
-    `• ${p}cola — mira tu pedido y la cola\n` +
+    `• ${p}catalogo — mira qué hay disponible\n` +
     `• ${p}ayuda — muestra esta ayuda\n\n` +
     `Puedes pedir ${cfg.requests.maxPerWindow} título(s) cada ${cfg.requests.windowDays} días.`
   );
+}
+
+// Construye el mensaje del catálogo con datos de Jellyfin (si está configurado).
+async function catalogText(cfg) {
+  const biz = cfg.business || 'ESPE Player';
+  const link = cfg.catalogUrl || process.env.CATALOG_URL || '';
+  let body = `🎬 *Catálogo de ${biz}*\n`;
+  try {
+    if (jellyfin.configured()) {
+      const c = await jellyfin.getCatalogSummary();
+      body += `\n🎞️ Películas: ${c.movies}\n📺 Series: ${c.series}\n`;
+      if (c.latest && c.latest.length) {
+        const items = c.latest
+          .map((i) => `• ${i.name}${i.year ? ` (${i.year})` : ''}`)
+          .join('\n');
+        body += `\n🆕 Últimos agregados:\n${items}\n`;
+      }
+    } else if (!link) {
+      return `El catálogo no está disponible por el momento.`;
+    }
+  } catch (e) {
+    logger.audit('catalog.error', { ok: false, error: e.message });
+    if (!link) return `No pude consultar el catálogo ahora mismo. Intenta más tarde.`;
+  }
+  if (link) body += `\n👉 Explóralo aquí: ${link}`;
+  const p = cfg.requests.prefix;
+  body += `\n\nPide lo que quieras con ${p}pedir <título>.`;
+  return body;
 }
 
 // message: { platform, userId, userName, text }
@@ -51,14 +80,8 @@ async function handleMessage(message) {
     return { reply: helpText(cfg) };
   }
 
-  if (parsed.cmd === 'cola' || parsed.cmd === 'estado') {
-    const mine = requests.pendingForUser(message.platform, message.userId);
-    const totalPend = requests.stats().pendiente;
-    if (mine.length === 0) {
-      return { reply: `No tienes pedidos pendientes. Hay ${totalPend} en la cola.\nUsa ${prefix}pedir <título> para pedir uno.` };
-    }
-    const lines = mine.map((r) => `• "${r.title}" — puesto ${requests.queuePosition(r.id)} de ${totalPend}`);
-    return { reply: `Tus pedidos pendientes:\n${lines.join('\n')}` };
+  if (parsed.cmd === 'catalogo' || parsed.cmd === 'catálogo' || parsed.cmd === 'catalog') {
+    return { reply: await catalogText(cfg) };
   }
 
   if (parsed.cmd === 'pedir') {
@@ -100,4 +123,4 @@ async function handleMessage(message) {
   return { reply: `No reconozco ese comando. Escribe ${prefix}ayuda para ver las opciones.` };
 }
 
-module.exports = { handleMessage, parse, helpText };
+module.exports = { handleMessage, parse, helpText, catalogText };

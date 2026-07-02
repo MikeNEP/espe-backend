@@ -9,6 +9,8 @@ const FILE = path.join(DATA_DIR, 'settings.json');
 const DEFAULTS = {
   business: 'ESPE Player',
   currency: '$',
+  // Link para que los usuarios exploren el catálogo (opcional).
+  catalogUrl: '',
   prices: { mensual: 0, trimestral: 0, anual: 0 },
   // Días que dura cada plan (se usan para renovar y para Mercado Pago).
   planDays: { mensual: 30, trimestral: 90, anual: 365 },

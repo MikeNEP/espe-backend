@@ -139,11 +139,12 @@ Los usuarios piden contenido por **Telegram** o **WhatsApp** con un comando, y t
 gestionas desde el panel (**Pedidos**). Límite configurable: por defecto **1 pedido cada 7 días** por usuario.
 
 ### Comandos
-- `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`).
-- `!cola` (o `!estado`) — muestra tu pedido y la posición en la cola.
+- `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`). Límite configurable por usuario.
+- `!catalogo` — muestra qué hay disponible (cantidad de películas/series y últimos agregados desde Jellyfin) + link del catálogo si lo configuras.
 - `!ayuda` — muestra la ayuda.
 
-El prefijo (`!`), la ventana (días) y el máximo por ventana se editan en **Configuración**.
+El prefijo (`!`), la ventana (días), el máximo por ventana y el **link del catálogo** se editan en **Configuración**.
+El comando `!catalogo` usa Jellyfin si está configurado; también puedes definir un link con `CATALOG_URL` o en el panel.
 
 ### Telegram (lo más fácil)
 1. Crea un bot con **@BotFather** y copia el token en `TELEGRAM_BOT_TOKEN`.

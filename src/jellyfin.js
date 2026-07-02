@@ -116,4 +116,49 @@ async function createUser(username, password) {
   return created;
 }
 
-module.exports = { configured, setDisabled, findUserId, createUser, setPassword };
+// Elige un userId para consultar la biblioteca (Jellyfin lo requiere).
+// Usa JELLYFIN_CATALOG_USER si está definido; si no, el primer usuario.
+async function pickUserId() {
+  const preferred = process.env.JELLYFIN_CATALOG_USER;
+  if (preferred) {
+    const id = await findUserId(preferred);
+    if (id) return id;
+  }
+  const res = await jfFetch('/Users');
+  if (!res.ok) throw new Error(`Jellyfin /Users devolvió ${res.status}`);
+  const users = await res.json();
+  return users[0] ? users[0].Id : null;
+}
+
+async function countItems(userId, type) {
+  const res = await jfFetch(
+    `/Items?userId=${userId}&Recursive=true&IncludeItemTypes=${type}&Limit=0&EnableTotalRecordCount=true`,
+  );
+  if (!res.ok) throw new Error(`Jellyfin /Items devolvió ${res.status}`);
+  const data = await res.json();
+  return data.TotalRecordCount || 0;
+}
+
+async function latestItems(userId, limit = 8) {
+  const res = await jfFetch(
+    `/Items?userId=${userId}&Recursive=true&IncludeItemTypes=Movie,Series&SortBy=DateCreated&SortOrder=Descending&Limit=${limit}&Fields=ProductionYear`,
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.Items || []).map((i) => ({ name: i.Name, year: i.ProductionYear, type: i.Type }));
+}
+
+// Resumen del catálogo: cantidad de películas/series y los últimos agregados.
+async function getCatalogSummary() {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const userId = await pickUserId();
+  if (!userId) throw new Error('no hay usuarios en Jellyfin');
+  const [movies, series, latest] = await Promise.all([
+    countItems(userId, 'Movie'),
+    countItems(userId, 'Series'),
+    latestItems(userId, 8),
+  ]);
+  return { movies, series, latest };
+}
+
+module.exports = { configured, setDisabled, findUserId, createUser, setPassword, getCatalogSummary };

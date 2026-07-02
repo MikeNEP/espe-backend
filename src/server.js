@@ -284,6 +284,7 @@ const server = http.createServer(async (req, res) => {
       const patch = {};
       if (typeof body.business === 'string' && body.business.trim()) patch.business = body.business.trim();
       if (typeof body.currency === 'string' && body.currency.trim()) patch.currency = body.currency.trim();
+      if (typeof body.catalogUrl === 'string') patch.catalogUrl = body.catalogUrl.trim();
       if (body.prices && typeof body.prices === 'object') {
         patch.prices = {};
         for (const k of ['mensual', 'trimestral', 'anual']) {
