@@ -15,6 +15,9 @@ const backup = require('./backup');
 const notifier = require('./notifier');
 const reminders = require('./reminders');
 const mercadopago = require('./mercadopago');
+const requests = require('./requests');
+const telegramBot = require('./bots/telegram');
+const whatsappBot = require('./bots/whatsapp');
 
 const PORT = process.env.PORT || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'cambia-esta-clave-admin';
@@ -99,6 +102,24 @@ async function syncJellyfin(sub) {
   }
 }
 
+// Avisa al usuario que hizo un pedido sobre el cambio de estado, por su plataforma.
+async function notifyRequestUser(reqItem) {
+  const biz = settings.get().business || 'ESPE Player';
+  const t = reqItem.title;
+  const msgs = {
+    aprobado: `👍 Tu pedido "${t}" fue aprobado. Lo agregaremos pronto a ${biz}.`,
+    cumplido: `🎉 ¡Listo! "${t}" ya está disponible en ${biz}. ¡Disfrútalo!`,
+    rechazado: `😕 Tu pedido "${t}" no pudo aceptarse${reqItem.note ? ': ' + reqItem.note : '.'}`,
+  };
+  const text = msgs[reqItem.status];
+  if (!text) return;
+  if (reqItem.platform === 'telegram' && telegramBot.enabled()) {
+    await telegramBot.sendMessage(reqItem.userId, text);
+  } else if (reqItem.platform === 'whatsapp' && whatsappBot.enabled()) {
+    await whatsappBot.sendMessage(reqItem.userId, text);
+  }
+}
+
 // Lee el body con límite de tamaño (evita abusos de memoria).
 function readBody(req) {
   return new Promise((resolve) => {
@@ -157,6 +178,7 @@ const server = http.createServer(async (req, res) => {
       jellyfin: jellyfin.configured(),
       mercadopago: mercadopago.configured(),
       notifications: notifier.status(),
+      bots: { telegram: telegramBot.enabled(), whatsapp: whatsappBot.enabled() },
     });
   }
 
@@ -182,6 +204,36 @@ const server = http.createServer(async (req, res) => {
     const result = await mercadopago.handleNotification({ req, body, query });
     const { httpStatus, ...rest } = result;
     return json(res, httpStatus || 200, rest);
+  }
+
+  // === Webhook de WhatsApp (bot de pedidos) ===
+  // GET: verificación del webhook (Meta). POST: mensajes entrantes.
+  if (path === '/api/v1/webhook/whatsapp') {
+    if (method === 'GET') {
+      const query = Object.fromEntries(url.searchParams.entries());
+      const v = whatsappBot.verifyWebhook(query);
+      if (v.ok) {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        return res.end(String(v.challenge || ''));
+      }
+      return json(res, 403, { error: 'verificación fallida' });
+    }
+    if (method === 'POST') {
+      const rl = security.rateLimit(`wa:${ip}`, 120, 60 * 1000);
+      if (!rl.allowed) return json(res, 429, { error: 'demasiadas solicitudes' });
+      const raw = await readRaw(req);
+      const sig = whatsappBot.verifySignature(raw, req.headers['x-hub-signature-256']);
+      if (!sig.ok) {
+        logger.audit('whatsapp.webhook', { ok: false, reason: 'firma inválida' });
+        return json(res, 401, { error: 'firma inválida' });
+      }
+      let body = {};
+      try { body = raw ? JSON.parse(raw) : {}; } catch { body = {}; }
+      // Respondemos 200 rápido y procesamos (Meta reintenta si tardamos).
+      json(res, 200, { received: true });
+      whatsappBot.handleWebhook(body).catch((e) => logger.audit('whatsapp.webhook', { ok: false, error: e.message }));
+      return;
+    }
   }
 
   // === Estado de suscripción (lo consulta la app ESPE Player tras el login) ===
@@ -245,6 +297,13 @@ const server = http.createServer(async (req, res) => {
         }
       }
       if (Array.isArray(body.reminderDays)) patch.reminderDays = body.reminderDays;
+      if (body.requests && typeof body.requests === 'object') {
+        patch.requests = {};
+        if (body.requests.enabled != null) patch.requests.enabled = Boolean(body.requests.enabled);
+        if (typeof body.requests.prefix === 'string' && body.requests.prefix.trim()) patch.requests.prefix = body.requests.prefix.trim().slice(0, 3);
+        if (body.requests.windowDays != null) patch.requests.windowDays = Math.max(1, parseInt(body.requests.windowDays, 10) || 7);
+        if (body.requests.maxPerWindow != null) patch.requests.maxPerWindow = Math.max(1, parseInt(body.requests.maxPerWindow, 10) || 1);
+      }
       const saved = settings.save(patch);
       logger.audit('settings.update', { ip, patch });
       return json(res, 200, saved);
@@ -278,6 +337,38 @@ const server = http.createServer(async (req, res) => {
     if (method === 'POST' && path === '/api/v1/admin/reminders/run') {
       const r = await reminders.runOnce();
       return json(res, 200, r);
+    }
+
+    // Estado de los bots de pedidos
+    if (method === 'GET' && path === '/api/v1/admin/bots/status') {
+      return json(res, 200, {
+        telegram: telegramBot.enabled(),
+        whatsapp: whatsappBot.enabled(),
+        config: settings.get().requests,
+      });
+    }
+
+    // Pedidos de películas/series (bot)
+    if (method === 'GET' && path === '/api/v1/admin/requests') {
+      const status = url.searchParams.get('status') || undefined;
+      const platform = url.searchParams.get('platform') || undefined;
+      return json(res, 200, { requests: requests.list({ status, platform }), stats: requests.stats() });
+    }
+    // Cambiar estado de un pedido (aprobar/rechazar/cumplido) y avisar al usuario
+    if (method === 'POST' && path === '/api/v1/admin/requests/status') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      const id = (body.id || '').trim();
+      const status = (body.status || '').trim();
+      if (!id || !requests.STATUS.includes(status)) {
+        return json(res, 400, { error: 'id y status válidos son requeridos' });
+      }
+      const updated = requests.setStatus(id, status, body.note);
+      if (!updated) return json(res, 404, { error: 'pedido no encontrado' });
+      logger.audit('request.status', { ip, id, status });
+      // Notificar al usuario del cambio (por su misma plataforma).
+      notifyRequestUser(updated).catch(() => {});
+      return json(res, 200, updated);
     }
 
     // Crear cuenta en Jellyfin + suscripción en un paso
@@ -401,6 +492,7 @@ store.setBeforeSaveHook(() => backup.backupNow('presave'));
 backup.scheduleDaily();
 reminders.schedule(6); // recordatorios cada 6h
 setInterval(syncExpired, 12 * 60 * 60 * 1000);
+telegramBot.start(); // bot de pedidos por long polling (si está habilitado)
 
 // Aviso si la clave admin quedó por defecto (riesgo de seguridad).
 if (ADMIN_KEY === 'cambia-esta-clave-admin') {
@@ -412,6 +504,7 @@ server.listen(PORT, () => {
   console.log(`Jellyfin ${jellyfin.configured() ? 'CONFIGURADO' : 'no configurado (modo MVP)'}`);
   console.log(`Mercado Pago ${mercadopago.configured() ? 'CONFIGURADO' : 'no configurado'}`);
   console.log(`Notificaciones: ${notifier.status().providers.join(', ') || 'console'}`);
+  console.log(`Bots -> Telegram: ${telegramBot.enabled() ? 'ON' : 'off'} | WhatsApp: ${whatsappBot.enabled() ? 'ON' : 'off'}`);
 });
 
 module.exports = server;

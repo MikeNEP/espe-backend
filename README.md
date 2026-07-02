@@ -133,6 +133,37 @@ POST /api/v1/webhook/mercadopago
 Si no hay canal directo al usuario, el recordatorio cae al admin con el link `wa.me` listo para enviar.
 Los recordatorios se envían a los días configurados en `reminderDays` (por defecto 7, 3 y 1), sin repetir, y se resetean al renovar.
 
+## Bots de pedidos (películas/series)
+
+Los usuarios piden contenido por **Telegram** o **WhatsApp** con un comando, y tú los
+gestionas desde el panel (**Pedidos**). Límite configurable: por defecto **1 pedido cada 7 días** por usuario.
+
+### Comandos
+- `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`).
+- `!cola` (o `!estado`) — muestra tu pedido y la posición en la cola.
+- `!ayuda` — muestra la ayuda.
+
+El prefijo (`!`), la ventana (días) y el máximo por ventana se editan en **Configuración**.
+
+### Telegram (lo más fácil)
+1. Crea un bot con **@BotFather** y copia el token en `TELEGRAM_BOT_TOKEN`.
+2. Pon `TELEGRAM_BOT_POLLING=true`. Al arrancar, el backend escucha por *long polling*
+   (no necesita URL pública ni webhook).
+
+### WhatsApp (Cloud API)
+1. Configura una app de WhatsApp Cloud API y completa `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID`.
+2. Define `WHATSAPP_VERIFY_TOKEN` (lo que quieras) y `WHATSAPP_APP_SECRET` (el de tu app de Meta).
+3. En Meta, registra el webhook apuntando a `https://TU-DOMINIO/api/v1/webhook/whatsapp`
+   con el mismo verify token. El backend valida la verificación (GET) y la firma de cada evento.
+
+### API de administración de pedidos
+```
+GET  /api/v1/admin/requests?status=pendiente   # lista + estadísticas
+POST /api/v1/admin/requests/status             # { id, status, note }  status: pendiente|aprobado|cumplido|rechazado
+GET  /api/v1/admin/bots/status                 # estado de los bots + config
+```
+Al cambiar el estado de un pedido, el backend **avisa automáticamente al usuario** por su misma plataforma.
+
 ## Fases del proyecto
 
 - **MVP:** activas/extiendes suscripciones a mano; la app consulta el estado.

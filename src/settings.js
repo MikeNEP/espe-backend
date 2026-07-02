@@ -14,6 +14,13 @@ const DEFAULTS = {
   planDays: { mensual: 30, trimestral: 90, anual: 365 },
   // A cuántos días del vencimiento se avisa al suscriptor.
   reminderDays: [7, 3, 1],
+  // Bots de pedidos de películas/series (Telegram/WhatsApp).
+  requests: {
+    enabled: true,       // aceptar pedidos
+    prefix: '!',         // prefijo de comandos (ej: !pedir)
+    windowDays: 7,       // ventana del límite
+    maxPerWindow: 1,     // pedidos permitidos por ventana y usuario
+  },
 };
 
 function ensure() {
@@ -31,6 +38,7 @@ function get() {
       prices: { ...DEFAULTS.prices, ...(data.prices || {}) },
       planDays: { ...DEFAULTS.planDays, ...(data.planDays || {}) },
       reminderDays: Array.isArray(data.reminderDays) ? data.reminderDays : DEFAULTS.reminderDays,
+      requests: { ...DEFAULTS.requests, ...(data.requests || {}) },
     };
   } catch (e) {
     return { ...DEFAULTS };
@@ -48,6 +56,7 @@ function save(patch) {
       .filter((n) => Number.isFinite(n) && n >= 0)
       .sort((a, b) => b - a);
   }
+  if (patch.requests) next.requests = { ...cur.requests, ...patch.requests };
   ensure();
   const tmp = FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2));

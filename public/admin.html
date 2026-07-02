@@ -127,6 +127,7 @@
     <nav>
       <a class="active" data-view="dashboard" onclick="verVista('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> Panel</a>
       <a data-view="config" onclick="verVista('config')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
+      <a data-view="requests" onclick="verVista('requests'); cargarPedidos()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Pedidos</a>
       <a data-view="system" onclick="verVista('system'); cargarSistema()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg> Sistema</a>
     </nav>
     <div class="side-foot">
@@ -214,6 +215,33 @@
       <div class="panel">
         <div class="panel-head"><h3>Registro de auditoría</h3><span class="sub" style="color:var(--muted); font-size:12.5px">Últimos eventos</span></div>
         <div id="auditWrap"><div class="empty">Cargando…</div></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-requests">
+      <div class="topbar">
+        <div><h2>Pedidos de contenido</h2><div class="sub">Películas y series pedidas por los usuarios vía bot</div></div>
+        <button class="btn ghost" onclick="cargarPedidos()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar</button>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="ico a"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="label">Pendientes</div><div class="num" id="rqPend">0</div></div>
+        <div class="kpi"><div class="ico p"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div><div class="label">Aprobados</div><div class="num" id="rqAprob">0</div></div>
+        <div class="kpi"><div class="ico g"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="label">Cumplidos</div><div class="num" id="rqCumpl">0</div></div>
+        <div class="kpi"><div class="ico r"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div class="label">Rechazados</div><div class="num" id="rqRech">0</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="tabs" id="rqTabs">
+            <button class="active" data-f="pendiente" onclick="filtroPedidos('pendiente')">Cola</button>
+            <button data-f="todos" onclick="filtroPedidos('todos')">Todos</button>
+            <button data-f="aprobado" onclick="filtroPedidos('aprobado')">Aprobados</button>
+            <button data-f="cumplido" onclick="filtroPedidos('cumplido')">Cumplidos</button>
+            <button data-f="rechazado" onclick="filtroPedidos('rechazado')">Rechazados</button>
+          </div>
+        </div>
+        <div id="pedidosWrap"><div class="empty">Cargando…</div></div>
       </div>
     </div>
   </main>
@@ -317,6 +345,53 @@
   async function probarNotif(){ const r=await fetch('/api/v1/admin/notify/test',{method:'POST',headers:headers()}); if(r.ok){ toast('Notificación de prueba enviada','ok'); } else toast('Error al enviar','err'); }
   async function correrRecordatorios(){ const r=await fetch('/api/v1/admin/reminders/run',{method:'POST',headers:headers()}); if(r.ok){ const d=await r.json(); toast('Recordatorios: '+(d.sent?d.sent.length:0)+' enviado(s)','ok'); cargarSistema(); } else toast('Error','err'); }
   async function crearBackup(){ const r=await fetch('/api/v1/admin/backups',{method:'POST',headers:headers()}); if(r.ok){ toast('Backup creado','ok'); cargarSistema(); } else toast('Error al crear backup','err'); }
+
+  let PEDIDOS=[], RQFILTER='pendiente';
+  async function cargarPedidos(){
+    const r=await fetch('/api/v1/admin/requests',{headers:headers()});
+    if(!r.ok){ toast('Error al cargar pedidos','err'); return; }
+    const d=await r.json(); PEDIDOS=d.requests||[]; const s=d.stats||{};
+    document.getElementById('rqPend').textContent=s.pendiente||0;
+    document.getElementById('rqAprob').textContent=s.aprobado||0;
+    document.getElementById('rqCumpl').textContent=s.cumplido||0;
+    document.getElementById('rqRech').textContent=s.rechazado||0;
+    renderPedidos();
+  }
+  function filtroPedidos(f){ RQFILTER=f; document.querySelectorAll('#rqTabs button').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderPedidos(); }
+  function renderPedidos(){
+    let list=PEDIDOS.slice();
+    if(RQFILTER!=='todos') list=list.filter(r=>r.status===RQFILTER);
+    // La cola (pendientes) se muestra en orden de llegada.
+    if(RQFILTER==='pendiente') list.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+    const wrap=document.getElementById('pedidosWrap');
+    if(list.length===0){ wrap.innerHTML='<div class="empty">Sin pedidos en esta categoría.</div>'; return; }
+    const badgeCls={pendiente:'porvencer',aprobado:'activo',cumplido:'activo',rechazado:'vencido'};
+    const plat=(p)=>p==='telegram'?'✈️ Telegram':p==='whatsapp'?'🟢 WhatsApp':p;
+    let h='<table><thead><tr><th>#</th><th>Título</th><th>Usuario</th><th>Origen</th><th>Estado</th><th>Fecha</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    list.forEach((r,i)=>{
+      const fecha=new Date(r.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      const num=RQFILTER==='pendiente'?(i+1):'—';
+      h+=`<tr>
+        <td><b>${num}</b></td>
+        <td><b>${escapeHtml(r.title)}</b>${r.note?'<div class="meta" style="color:var(--muted);font-size:12px">'+escapeHtml(r.note)+'</div>':''}</td>
+        <td>${escapeHtml(r.userName||r.userId)}</td>
+        <td style="font-size:13px">${plat(r.platform)}</td>
+        <td><span class="badge ${badgeCls[r.status]||''}">${r.status}</span></td>
+        <td style="color:var(--muted)">${fecha}</td>
+        <td><div class="actions">
+          ${r.status!=='aprobado'&&r.status!=='cumplido'?`<button class="btn sm ghost" onclick="pedidoEstado('${r.id}','aprobado')">Aprobar</button>`:''}
+          ${r.status!=='cumplido'?`<button class="btn sm" onclick="pedidoEstado('${r.id}','cumplido')">Cumplido</button>`:''}
+          ${r.status!=='rechazado'?`<button class="icobtn red" title="Rechazar" onclick="pedidoRechazar('${r.id}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:''}
+        </div></td></tr>`;
+    });
+    wrap.innerHTML=h+'</tbody></table>';
+  }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  async function pedidoEstado(id,status,note){
+    const r=await fetch('/api/v1/admin/requests/status',{method:'POST',headers:headers(),body:JSON.stringify({id,status,note})});
+    if(r.ok){ toast('Pedido '+status,'ok'); cargarPedidos(); } else toast('Error','err');
+  }
+  async function pedidoRechazar(id){ const note=prompt('Motivo del rechazo (opcional):')||''; pedidoEstado(id,'rechazado',note); }
 
   async function cargar(){ const r=await fetch('/api/v1/admin/subscribers',{headers:headers()}); if(!r.ok) return; SUBS=(await r.json()).subscribers||[]; stats(); renderAlerts(); render(); }
 
