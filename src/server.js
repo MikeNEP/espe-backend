@@ -25,6 +25,10 @@ const APP_KEY = process.env.APP_KEY || ''; // opcional: clave que envía la app
 const APP_HMAC_SECRET = process.env.APP_HMAC_SECRET || ''; // opcional: firma la respuesta
 const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES, 10) || 64 * 1024; // 64 KB
 
+// Caché en memoria del catálogo (para la página pública de recomendaciones).
+const CATALOG_TTL_MS = parseInt(process.env.CATALOG_TTL_MS, 10) || 10 * 60 * 1000; // 10 min
+let catalogCache = { data: null, at: 0 };
+
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body, null, 2));
@@ -193,6 +197,55 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Página pública de catálogo/recomendaciones (para el comando !recomendaciones)
+  if (method === 'GET' && (path === '/catalogo' || path === '/catalogo/' || path === '/recomendaciones')) {
+    try {
+      const html = fs.readFileSync(nodePath.join(__dirname, '..', 'public', 'catalog.html'));
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    } catch (e) {
+      return json(res, 500, { error: 'no se pudo cargar el catálogo' });
+    }
+  }
+
+  // API pública del catálogo (con caché en memoria para no saturar Jellyfin)
+  if (method === 'GET' && path === '/api/v1/public/catalog') {
+    const rl = security.rateLimit(`cat:${ip}`, 60, 60 * 1000);
+    if (!rl.allowed) return json(res, 429, { error: 'demasiadas solicitudes' });
+    if (!jellyfin.configured()) {
+      return json(res, 200, { business: settings.get().business, movies: [], series: [], available: false });
+    }
+    const now = Date.now();
+    if (catalogCache.data && now - catalogCache.at < CATALOG_TTL_MS) {
+      return json(res, 200, catalogCache.data);
+    }
+    try {
+      const cat = await jellyfin.getFullCatalog();
+      const data = { business: settings.get().business, available: true, ...cat };
+      catalogCache = { data, at: now };
+      return json(res, 200, data);
+    } catch (e) {
+      logger.audit('catalog.error', { ok: false, error: e.message });
+      if (catalogCache.data) return json(res, 200, catalogCache.data); // sirve lo último bueno
+      return json(res, 502, { error: 'no se pudo leer el catálogo', available: false });
+    }
+  }
+
+  // Proxy de pósters (evita exponer la API key de Jellyfin en el navegador)
+  if (method === 'GET' && path.startsWith('/catalogo/img/')) {
+    const id = path.slice('/catalogo/img/'.length);
+    if (!/^[a-f0-9]{16,40}$/i.test(id)) return json(res, 400, { error: 'id inválido' });
+    try {
+      const img = await jellyfin.fetchImage(id);
+      if (!img) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': img.contentType, 'Cache-Control': 'public, max-age=86400' });
+      return res.end(img.buf);
+    } catch (e) {
+      res.writeHead(502);
+      return res.end();
+    }
+  }
+
   // === Webhook de Mercado Pago (público, verificado por firma) ===
   if (method === 'POST' && path === '/api/v1/webhook/mercadopago') {
     const rl = security.rateLimit(`mp:${ip}`, 60, 60 * 1000); // 60/min por IP
@@ -284,7 +337,7 @@ const server = http.createServer(async (req, res) => {
       const patch = {};
       if (typeof body.business === 'string' && body.business.trim()) patch.business = body.business.trim();
       if (typeof body.currency === 'string' && body.currency.trim()) patch.currency = body.currency.trim();
-      if (typeof body.catalogUrl === 'string') patch.catalogUrl = body.catalogUrl.trim();
+      if (typeof body.recommendationsUrl === 'string') patch.recommendationsUrl = body.recommendationsUrl.trim();
       if (body.prices && typeof body.prices === 'object') {
         patch.prices = {};
         for (const k of ['mensual', 'trimestral', 'anual']) {

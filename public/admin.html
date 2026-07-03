@@ -187,7 +187,7 @@
           <div><label>Anual</label><input id="cAnual" class="inp" type="number" value="0" /></div>
         </div>
         <div class="field"><label>Recordatorios de vencimiento (días, separados por coma)</label><input id="cReminders" class="inp" style="max-width:220px" value="7,3,1" /></div>
-        <div class="field"><label>Link del catálogo (para el comando !catalogo)</label><input id="cCatalogUrl" class="inp" placeholder="https://tu-servidor/web" /></div>
+        <div class="field"><label>Link de recomendaciones (comando !recomendaciones)</label><input id="cRecUrl" class="inp" placeholder="Vacío = usa la página integrada /catalogo" /></div>
         <button class="btn" onclick="guardarConfig()">Guardar cambios</button>
       </div>
     </div>
@@ -314,8 +314,8 @@
   function salir(){ sessionStorage.removeItem(KEY); location.reload(); }
   function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); }
 
-  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cCatalogUrl').value=CFG.catalogUrl||''; } }
-  async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',catalogUrl:document.getElementById('cCatalogUrl').value.trim(),prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
+  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cRecUrl').value=CFG.recommendationsUrl||''; } }
+  async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',recommendationsUrl:document.getElementById('cRecUrl').value.trim(),prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
 
   async function cargarSistema(){
     try {

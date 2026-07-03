@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es-419">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ESPE Player · Catálogo</title>
+<style>
+  :root {
+    --bg:#0A0710; --card:#17131F; --card-2:#1F192E; --border:#2A2440;
+    --purple:#A97BFF; --purple-2:#7C3AED; --grad:linear-gradient(135deg,#7C3AED,#A97BFF);
+    --text:#ECE6F5; --muted:#8E82A6; --green:#34D399;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:radial-gradient(900px 500px at 50% -10%,#1b1030,var(--bg) 55%); color:var(--text); font-family:'Inter','Segoe UI',system-ui,sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased; }
+  ::-webkit-scrollbar { width:10px; } ::-webkit-scrollbar-thumb { background:#2c2540; border-radius:8px; }
+  header { padding:28px 20px 10px; text-align:center; }
+  .logo { width:56px; height:56px; border-radius:15px; background:var(--grad); display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:24px; color:#fff; box-shadow:0 8px 24px rgba(124,58,237,.5); margin-bottom:12px; }
+  h1 { font-size:24px; } h1 b { color:var(--purple); }
+  .sub { color:var(--muted); font-size:14px; margin-top:4px; }
+  .wrap { max-width:1200px; margin:0 auto; padding:16px 18px 60px; }
+  .toolbar { position:sticky; top:0; z-index:5; background:rgba(10,7,16,.85); backdrop-filter:blur(8px); padding:14px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .tabs { display:flex; gap:6px; background:var(--card); padding:5px; border-radius:12px; border:1px solid var(--border); }
+  .tabs button { border:none; background:transparent; color:var(--muted); padding:9px 18px; border-radius:9px; cursor:pointer; font-size:14px; font-weight:600; }
+  .tabs button.active { background:var(--card-2); color:var(--text); }
+  .search { position:relative; flex:1; max-width:420px; min-width:200px; }
+  .search input { width:100%; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:11px 14px 11px 40px; color:var(--text); font-size:15px; outline:none; }
+  .search input:focus { border-color:var(--purple-2); }
+  .search svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); width:17px; height:17px; color:var(--muted); }
+  .count { text-align:center; color:var(--muted); font-size:13px; margin:6px 0 16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:18px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; transition:transform .12s, border-color .15s; }
+  .card:hover { transform:translateY(-3px); border-color:var(--purple-2); }
+  .poster { width:100%; aspect-ratio:2/3; background:linear-gradient(135deg,#241b38,#17131F); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; text-align:center; padding:10px; }
+  .poster img { width:100%; height:100%; object-fit:cover; display:block; }
+  .meta { padding:10px 12px 13px; }
+  .title { font-size:14px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .year { color:var(--muted); font-size:12.5px; margin-top:3px; }
+  .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  .loading { text-align:center; padding:60px 20px; color:var(--muted); }
+  .spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--purple); border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 14px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; padding:20px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">E</div>
+  <h1>ESPE <b>Player</b></h1>
+  <div class="sub" id="sub">Explora todo lo disponible y pide lo que quieras por el bot</div>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="active" data-t="movies" onclick="setTab('movies')">🎞️ Películas</button>
+      <button data-t="series" onclick="setTab('series')">📺 Series</button>
+    </div>
+    <div class="search">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="q" placeholder="Buscar por título…" oninput="render()" />
+    </div>
+  </div>
+  <div class="count" id="count"></div>
+  <div id="content"><div class="loading"><div class="spinner"></div>Cargando el catálogo…</div></div>
+</div>
+<footer id="foot">ESPE Player · Catálogo</footer>
+
+<script>
+  let DATA = { movies: [], series: [] };
+  let TAB = 'movies';
+
+  function setTab(t){ TAB=t; document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===t)); render(); }
+  const norm=(s)=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  async function load(){
+    try {
+      const r = await fetch('/api/v1/public/catalog');
+      const d = await r.json();
+      DATA.movies = d.movies||[]; DATA.series = d.series||[];
+      if (d.business){ document.querySelector('h1').innerHTML = d.business.replace(/ (\S+)$/,' <b>$1</b>'); document.getElementById('foot').textContent = d.business+' · Catálogo'; }
+      if (d.available===false){ document.getElementById('content').innerHTML='<div class="empty">El catálogo no está disponible por el momento.<br>Vuelve a intentarlo más tarde.</div>'; document.getElementById('count').textContent=''; return; }
+      render();
+    } catch(e){
+      document.getElementById('content').innerHTML='<div class="empty">No se pudo cargar el catálogo. Intenta de nuevo.</div>';
+    }
+  }
+
+  function render(){
+    const q = norm(document.getElementById('q').value.trim());
+    let list = (TAB==='movies'?DATA.movies:DATA.series).slice();
+    if (q) list = list.filter(i=>norm(i.name).includes(q));
+    list.sort((a,b)=>a.name.localeCompare(b.name,'es'));
+    const tipo = TAB==='movies'?'película(s)':'serie(s)';
+    document.getElementById('count').textContent = list.length+' '+tipo+(q?' encontradas':' en total');
+    const c = document.getElementById('content');
+    if (list.length===0){ c.innerHTML='<div class="empty">'+(q?'Sin resultados para tu búsqueda.':'No hay títulos para mostrar.')+'</div>'; return; }
+    c.className='grid'; c.id='content';
+    c.innerHTML = list.map(i=>{
+      const poster = i.img ? `<img loading="lazy" src="/catalogo/img/${i.id}" alt="${esc(i.name)}" onerror="this.parentNode.textContent=this.alt"/>` : esc(i.name);
+      return `<div class="card"><div class="poster">${poster}</div><div class="meta"><div class="title">${esc(i.name)}</div>${i.year?`<div class="year">${i.year}</div>`:''}</div></div>`;
+    }).join('');
+  }
+  function esc(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // El grid usa .grid; el contenedor inicial es un div normal, lo reseteamos al renderizar.
+  document.getElementById('content').classList.remove('grid');
+  load();
+</script>
+</body>
+</html>

@@ -161,4 +161,48 @@ async function getCatalogSummary() {
   return { movies, series, latest };
 }
 
-module.exports = { configured, setDisabled, findUserId, createUser, setPassword, getCatalogSummary };
+// Solo los últimos agregados (para el comando !nuevos).
+async function getLatest(limit = 10) {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const userId = await pickUserId();
+  if (!userId) return [];
+  return latestItems(userId, limit);
+}
+
+// Catálogo completo (para la página pública de recomendaciones).
+async function getFullCatalog() {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const userId = await pickUserId();
+  if (!userId) throw new Error('no hay usuarios en Jellyfin');
+  const fetchType = async (type) => {
+    const res = await jfFetch(
+      `/Items?userId=${userId}&Recursive=true&IncludeItemTypes=${type}&SortBy=SortName&Fields=ProductionYear,Overview,Genres&EnableImageTypes=Primary&Limit=5000`,
+    );
+    if (!res.ok) throw new Error(`Jellyfin /Items devolvió ${res.status}`);
+    const data = await res.json();
+    return (data.Items || []).map((i) => ({
+      id: i.Id,
+      name: i.Name,
+      year: i.ProductionYear || null,
+      genres: i.Genres || [],
+      overview: i.Overview || '',
+      img: Boolean(i.ImageTags && i.ImageTags.Primary),
+    }));
+  };
+  const [movies, series] = await Promise.all([fetchType('Movie'), fetchType('Series')]);
+  return { movies, series };
+}
+
+// Descarga el póster de un ítem (para servirlo por proxy sin exponer la API key).
+async function fetchImage(id) {
+  if (!configured()) return null;
+  const res = await jfFetch(`/Items/${encodeURIComponent(id)}/Images/Primary?maxWidth=320&quality=80`);
+  if (!res.ok) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  return { buf, contentType: res.headers.get('content-type') || 'image/jpeg' };
+}
+
+module.exports = {
+  configured, setDisabled, findUserId, createUser, setPassword,
+  getCatalogSummary, getLatest, getFullCatalog, fetchImage,
+};

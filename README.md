@@ -140,11 +140,19 @@ gestionas desde el panel (**Pedidos**). Límite configurable: por defecto **1 pe
 
 ### Comandos
 - `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`). Límite configurable por usuario.
-- `!catalogo` — muestra qué hay disponible (cantidad de películas/series y últimos agregados desde Jellyfin) + link del catálogo si lo configuras.
+- `!recomendaciones` — envía el link a la **página de catálogo** (en español) donde el usuario ve todo lo disponible hoy.
+- `!nuevos` — lista los últimos títulos agregados (desde Jellyfin).
 - `!ayuda` — muestra la ayuda.
 
-El prefijo (`!`), la ventana (días), el máximo por ventana y el **link del catálogo** se editan en **Configuración**.
-El comando `!catalogo` usa Jellyfin si está configurado; también puedes definir un link con `CATALOG_URL` o en el panel.
+El prefijo (`!`), la ventana (días) y el máximo por ventana se editan en **Configuración**.
+
+### Página de catálogo (para `!recomendaciones`)
+El backend sirve una página pública en **`/catalogo`** (español latino) que lee tu Jellyfin y
+muestra **todas** las películas y series con póster y buscador. Ideal para quien no sabe qué pedir.
+- Define `PUBLIC_URL` (ej. `https://espe.lat`) para que `!recomendaciones` arme el link `PUBLIC_URL/catalogo`.
+- O configura un **link propio** en **Configuración → Link de recomendaciones** (tiene prioridad).
+- Los pósters se sirven por proxy (`/catalogo/img/:id`) para no exponer la API key de Jellyfin.
+- El catálogo se cachea en memoria (10 min por defecto, `CATALOG_TTL_MS`).
 
 ### Telegram (lo más fácil)
 1. Crea un bot con **@BotFather** y copia el token en `TELEGRAM_BOT_TOKEN`.

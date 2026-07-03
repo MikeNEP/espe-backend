@@ -32,38 +32,35 @@ function helpText(cfg) {
   return (
     `🎬 *${biz}*\n\n` +
     `• ${p}pedir <título> — pide una película o serie\n` +
-    `• ${p}catalogo — mira qué hay disponible\n` +
+    `• ${p}recomendaciones — mira todo lo disponible (página web)\n` +
+    `• ${p}nuevos — los últimos títulos agregados\n` +
     `• ${p}ayuda — muestra esta ayuda\n\n` +
     `Puedes pedir ${cfg.requests.maxPerWindow} título(s) cada ${cfg.requests.windowDays} días.`
   );
 }
 
-// Construye el mensaje del catálogo con datos de Jellyfin (si está configurado).
-async function catalogText(cfg) {
+// Link de la página de recomendaciones/catálogo.
+function recommendationsLink(cfg) {
+  if (cfg.recommendationsUrl) return cfg.recommendationsUrl;
+  const base = process.env.PUBLIC_URL || '';
+  if (base) return base.replace(/\/$/, '') + '/catalogo';
+  return '';
+}
+
+// Mensaje de los últimos agregados (comando !nuevos).
+async function nuevosText(cfg) {
   const biz = cfg.business || 'ESPE Player';
-  const link = cfg.catalogUrl || process.env.CATALOG_URL || '';
-  let body = `🎬 *Catálogo de ${biz}*\n`;
+  const p = cfg.requests.prefix;
+  if (!jellyfin.configured()) return `Las novedades no están disponibles por el momento.`;
   try {
-    if (jellyfin.configured()) {
-      const c = await jellyfin.getCatalogSummary();
-      body += `\n🎞️ Películas: ${c.movies}\n📺 Series: ${c.series}\n`;
-      if (c.latest && c.latest.length) {
-        const items = c.latest
-          .map((i) => `• ${i.name}${i.year ? ` (${i.year})` : ''}`)
-          .join('\n');
-        body += `\n🆕 Últimos agregados:\n${items}\n`;
-      }
-    } else if (!link) {
-      return `El catálogo no está disponible por el momento.`;
-    }
+    const latest = await jellyfin.getLatest(10);
+    if (!latest.length) return `Aún no hay novedades para mostrar.`;
+    const items = latest.map((i) => `• ${i.name}${i.year ? ` (${i.year})` : ''}`).join('\n');
+    return `🆕 *Últimos agregados a ${biz}:*\n${items}\n\nPídelos con ${p}pedir <título>.`;
   } catch (e) {
     logger.audit('catalog.error', { ok: false, error: e.message });
-    if (!link) return `No pude consultar el catálogo ahora mismo. Intenta más tarde.`;
+    return `No pude consultar las novedades ahora mismo. Intenta más tarde.`;
   }
-  if (link) body += `\n👉 Explóralo aquí: ${link}`;
-  const p = cfg.requests.prefix;
-  body += `\n\nPide lo que quieras con ${p}pedir <título>.`;
-  return body;
 }
 
 // message: { platform, userId, userName, text }
@@ -80,8 +77,20 @@ async function handleMessage(message) {
     return { reply: helpText(cfg) };
   }
 
-  if (parsed.cmd === 'catalogo' || parsed.cmd === 'catálogo' || parsed.cmd === 'catalog') {
-    return { reply: await catalogText(cfg) };
+  if (parsed.cmd === 'recomendaciones' || parsed.cmd === 'recomendacion' || parsed.cmd === 'recomienda') {
+    const link = recommendationsLink(cfg);
+    if (!link) {
+      return { reply: 'La página de recomendaciones aún no está disponible. Pronto la tendrás 🙂' };
+    }
+    return {
+      reply:
+        `🍿 ¿No sabes qué pedir? Mira todo lo que hay en ${biz}:\n${link}\n\n` +
+        `Cuando elijas, pídelo con ${prefix}pedir <título>.`,
+    };
+  }
+
+  if (parsed.cmd === 'nuevos' || parsed.cmd === 'estrenos' || parsed.cmd === 'recientes') {
+    return { reply: await nuevosText(cfg) };
   }
 
   if (parsed.cmd === 'pedir') {
@@ -101,7 +110,7 @@ async function handleMessage(message) {
           `Podrás pedir de nuevo el ${fmtDate(gate.nextAt)}.`,
       };
     }
-    const { request, position } = requests.add({
+    const { request } = requests.add({
       platform: message.platform,
       userId: message.userId,
       userName: message.userName,
@@ -110,12 +119,10 @@ async function handleMessage(message) {
     logger.audit('request.new', { platform: message.platform, user: message.userName || message.userId, title: request.title });
     // Avisar al admin del nuevo pedido.
     notifier
-      .notifyAdmin(`🎬 Nuevo pedido (${message.platform}) de ${message.userName || message.userId}: "${request.title}" — puesto ${position} en la cola.`)
+      .notifyAdmin(`🎬 Nuevo pedido (${message.platform}) de ${message.userName || message.userId}: "${request.title}"`)
       .catch(() => {});
     return {
-      reply:
-        `✅ ¡Pedido recibido!\n"${request.title}"\n` +
-        `Estás en el puesto ${position} de la cola. Te avisaremos cuando esté disponible en ${biz}.`,
+      reply: `✅ ¡Pedido recibido!\n"${request.title}"\nTe avisaremos cuando esté disponible en ${biz}.`,
     };
   }
 
@@ -123,4 +130,4 @@ async function handleMessage(message) {
   return { reply: `No reconozco ese comando. Escribe ${prefix}ayuda para ver las opciones.` };
 }
 
-module.exports = { handleMessage, parse, helpText, catalogText };
+module.exports = { handleMessage, parse, helpText, nuevosText, recommendationsLink };
