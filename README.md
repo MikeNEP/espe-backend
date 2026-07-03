@@ -146,11 +146,22 @@ gestionas desde el panel (**Pedidos**). Límite configurable: por defecto **1 pe
 
 El prefijo (`!`), la ventana (días) y el máximo por ventana se editan en **Configuración**.
 
-### Página de catálogo (para `!recomendaciones`)
-El backend sirve una página pública en **`/catalogo`** (español latino) que lee tu Jellyfin y
-muestra **todas** las películas y series con póster y buscador. Ideal para quien no sabe qué pedir.
-- Define `PUBLIC_URL` (ej. `https://espe.lat`) para que `!recomendaciones` arme el link `PUBLIC_URL/catalogo`.
-- O configura un **link propio** en **Configuración → Link de recomendaciones** (tiene prioridad).
+### `!recomendaciones` — qué link envía
+Prioridad del link:
+1. El que pongas en **Configuración → Link de recomendaciones** (o `RECOMMENDATIONS_URL`).
+2. Si está vacío, usa **JustWatch Ecuador** ([justwatch.com/ec](https://www.justwatch.com/ec)) por defecto:
+   estrenos y catálogo mundial en español, con sinopsis y dónde ver.
+
+Alternativas típicas para pegar en el panel:
+- `https://www.themoviedb.org/?language=es-MX` (base tipo IMDb, en español latino)
+- `https://www.sensacine.com.mx/peliculas/estrenos/` (estrenos + críticas)
+- `PUBLIC_URL/catalogo` (tu **catálogo real**, ver abajo)
+
+### Página de catálogo propia (`/catalogo`)
+El backend además sirve una página pública en **`/catalogo`** (español latino) que lee tu Jellyfin y
+muestra **todas** tus películas y series con póster y buscador. Úsala si quieres que los usuarios
+vean solo **tu** contenido (ponla en el link de recomendaciones como `PUBLIC_URL/catalogo`).
+- Define `PUBLIC_URL` (ej. `https://espe.lat`) para el link absoluto.
 - Los pósters se sirven por proxy (`/catalogo/img/:id`) para no exponer la API key de Jellyfin.
 - El catálogo se cachea en memoria (10 min por defecto, `CATALOG_TTL_MS`).
 

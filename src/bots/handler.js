@@ -39,12 +39,18 @@ function helpText(cfg) {
   );
 }
 
-// Link de la página de recomendaciones/catálogo.
+// Link por defecto para !recomendaciones si no se configura otro.
+// JustWatch Ecuador: estrenos y catálogo mundial en español, con sinopsis y dónde ver.
+const DEFAULT_RECOMMENDATIONS_URL = 'https://www.justwatch.com/ec';
+
+// Link de la página de recomendaciones. Prioridad:
+//   1) el que se ponga en el panel (Configuración → Link de recomendaciones)
+//   2) la variable de entorno RECOMMENDATIONS_URL
+//   3) el link por defecto (JustWatch Ecuador)
 function recommendationsLink(cfg) {
   if (cfg.recommendationsUrl) return cfg.recommendationsUrl;
-  const base = process.env.PUBLIC_URL || '';
-  if (base) return base.replace(/\/$/, '') + '/catalogo';
-  return '';
+  if (process.env.RECOMMENDATIONS_URL) return process.env.RECOMMENDATIONS_URL;
+  return DEFAULT_RECOMMENDATIONS_URL;
 }
 
 // Mensaje de los últimos agregados (comando !nuevos).
