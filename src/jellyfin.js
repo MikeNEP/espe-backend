@@ -14,6 +14,17 @@ function configured() {
   return Boolean(JELLYFIN_URL && JELLYFIN_API_KEY);
 }
 
+// Comprueba si el servidor Jellyfin responde (para el monitor de caídas).
+async function ping() {
+  if (!configured()) return false;
+  try {
+    const res = await jfFetch('/System/Info/Public');
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 function headers() {
   return {
     Authorization: `MediaBrowser Token="${JELLYFIN_API_KEY}"`,
@@ -220,6 +231,6 @@ async function fetchImage(id) {
 }
 
 module.exports = {
-  configured, setDisabled, findUserId, createUser, setPassword,
+  configured, ping, setDisabled, findUserId, createUser, setPassword,
   getCatalogSummary, getLatest, getFullCatalog, fetchImage, searchCatalog,
 };

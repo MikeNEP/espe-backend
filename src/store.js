@@ -30,6 +30,18 @@ function isCurrent(sub) {
   return Boolean(sub) && toMs(sub.expires_at) > Date.now();
 }
 
+// Horas restantes (para pruebas de corta duración).
+function hoursLeft(sub) {
+  if (!sub) return 0;
+  const ms = toMs(sub.expires_at) - Date.now();
+  return ms <= 0 ? 0 : Math.ceil(ms / 3600000);
+}
+
+// ¿Es una prueba gratis?
+function isTrial(sub) {
+  return Boolean(sub) && sub.plan === 'prueba';
+}
+
 function load() {
   ensure();
   try {
@@ -69,14 +81,15 @@ function save(data) {
 function list() { return load().subscribers; }
 function getByUsername(username) { return load().subscribers.find((s) => s.username === username) || null; }
 
-// Otorga/extiende una suscripción y registra el pago en el historial.
-function grant(username, days, plan, opts = {}) {
+// Núcleo: otorga/extiende acceso por una duración en milisegundos.
+// `action` distingue un pago normal de una prueba en el historial.
+function applyGrant(username, durationMs, plan, opts = {}, action = 'pago', extra = {}) {
   const data = load();
   let sub = data.subscribers.find((s) => s.username === username);
   const now = new Date();
   const stillActive = sub && toMs(sub.expires_at) > now.getTime();
   const base = stillActive ? new Date(sub.expires_at) : now;
-  const expires = new Date(base.getTime() + days * 86400000);
+  const expires = new Date(base.getTime() + durationMs);
 
   if (!sub) {
     sub = {
@@ -95,13 +108,23 @@ function grant(username, days, plan, opts = {}) {
   }
   sub.history = sub.history || [];
   sub.history.push({
-    date: now.toISOString(), action: 'pago', days, plan: sub.plan,
-    amount: opts.amount || 0, source: opts.source || 'manual',
+    date: now.toISOString(), action, plan: sub.plan,
+    amount: opts.amount || 0, source: opts.source || 'manual', ...extra,
   });
   // Al renovar se limpian los recordatorios ya enviados: podrá volver a avisar.
   sub.notified_thresholds = [];
   save(data);
   return sub;
+}
+
+// Otorga/extiende una suscripción por días y registra el pago en el historial.
+function grant(username, days, plan, opts = {}) {
+  return applyGrant(username, days * 86400000, plan, opts, 'pago', { days });
+}
+
+// Otorga una PRUEBA GRATIS por horas (plan 'prueba').
+function grantHours(username, hours, opts = {}) {
+  return applyGrant(username, hours * 3600000, 'prueba', opts, 'prueba', { hours });
 }
 
 function revoke(username) {
@@ -179,7 +202,7 @@ function markPaymentProcessed(id, meta = {}) {
 }
 
 module.exports = {
-  list, getByUsername, grant, revoke, setBanned, setPhone, setScreens,
-  isActive, isCurrent, toMs, markThresholdNotified,
+  list, getByUsername, grant, grantHours, revoke, setBanned, setPhone, setScreens,
+  isActive, isCurrent, isTrial, hoursLeft, toMs, markThresholdNotified,
   hasProcessedPayment, markPaymentProcessed, setBeforeSaveHook,
 };

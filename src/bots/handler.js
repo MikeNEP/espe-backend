@@ -157,19 +157,35 @@ async function handleMessage(message) {
           `Podrás pedir de nuevo el ${fmtDate(gate.nextAt)}.`,
       };
     }
-    const { request } = requests.add({
+    const res = requests.add({
       platform: message.platform,
       userId: message.userId,
       userName: message.userName,
       title: parsed.arg,
     });
-    logger.audit('request.new', { platform: message.platform, user: message.userName || message.userId, title: request.title });
-    // Avisar al admin del nuevo pedido.
+    const who = message.userName || message.userId;
+
+    if (res.already) {
+      return { reply: `Ya tenías pedido "${res.request.title}" 🙂 Te avisaremos cuando esté disponible en ${biz}.` };
+    }
+    if (res.voted) {
+      // El título ya estaba pedido: sumamos el voto y subimos su prioridad.
+      logger.audit('request.vote', { platform: message.platform, user: who, title: res.request.title, votes: res.votes });
+      notifier
+        .notifyAdmin(`👍 Otro voto para "${res.request.title}" (ahora ${res.votes} votos).`)
+        .catch(() => {});
+      return {
+        reply:
+          `✅ ¡Sumado! "${res.request.title}" ya estaba pedido y ahora tiene ${res.votes} votos.\n` +
+          `Cuantos más lo pidan, antes lo conseguimos. Te avisaremos cuando esté disponible en ${biz}.`,
+      };
+    }
+    logger.audit('request.new', { platform: message.platform, user: who, title: res.request.title });
     notifier
-      .notifyAdmin(`🎬 Nuevo pedido (${message.platform}) de ${message.userName || message.userId}: "${request.title}"`)
+      .notifyAdmin(`🎬 Nuevo pedido (${message.platform}) de ${who}: "${res.request.title}"`)
       .catch(() => {});
     return {
-      reply: `✅ ¡Pedido recibido!\n"${request.title}"\nTe avisaremos cuando esté disponible en ${biz}.`,
+      reply: `✅ ¡Pedido recibido!\n"${res.request.title}"\nTe avisaremos cuando esté disponible en ${biz}.`,
     };
   }
 

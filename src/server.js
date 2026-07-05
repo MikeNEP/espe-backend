@@ -18,6 +18,7 @@ const mercadopago = require('./mercadopago');
 const requests = require('./requests');
 const telegramBot = require('./bots/telegram');
 const whatsappBot = require('./bots/whatsapp');
+const monitor = require('./monitor');
 
 const PORT = process.env.PORT || 8080;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'cambia-esta-clave-admin';
@@ -28,6 +29,10 @@ const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES, 10) || 64 * 1024; //
 // Caché en memoria del catálogo (para la página pública de recomendaciones).
 const CATALOG_TTL_MS = parseInt(process.env.CATALOG_TTL_MS, 10) || 10 * 60 * 1000; // 10 min
 let catalogCache = { data: null, at: 0 };
+
+// Último estado (habilitado/deshabilitado) aplicado en Jellyfin por usuario,
+// para que el sweep periódico solo actúe cuando algo cambia.
+const appliedEnabled = new Map();
 
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -51,10 +56,12 @@ function adminView(sub) {
     banned,
     status: !sub ? 'inexistente' : banned ? 'baneado' : subActive ? 'activo' : 'vencido',
     plan: sub ? sub.plan : null,
+    is_trial: store.isTrial(sub),
     phone: sub ? sub.phone || '' : '',
     screens: sub ? sub.screens || 2 : 2,
     expires_at: sub ? sub.expires_at : null,
     days_left: sub ? daysLeft(sub.expires_at) : 0,
+    hours_left: sub ? store.hoursLeft(sub) : 0,
     history: sub ? sub.history || [] : [],
   };
 }
@@ -101,12 +108,13 @@ async function syncJellyfin(sub) {
   const screens = parseInt(sub.screens, 10) || 2;
   try {
     await jellyfin.setDisabled(sub.username, !enabled, screens);
+    appliedEnabled.set(sub.username, enabled);
   } catch (e) {
     logger.audit('jellyfin.sync', { ok: false, username: sub.username, error: e.message });
   }
 }
 
-// Avisa al usuario que hizo un pedido sobre el cambio de estado, por su plataforma.
+// Avisa del cambio de estado a TODOS los que pidieron/votaron ese título.
 async function notifyRequestUser(reqItem) {
   const biz = settings.get().business || 'ESPE Player';
   const t = reqItem.title;
@@ -117,10 +125,15 @@ async function notifyRequestUser(reqItem) {
   };
   const text = msgs[reqItem.status];
   if (!text) return;
-  if (reqItem.platform === 'telegram' && telegramBot.enabled()) {
-    await telegramBot.sendMessage(reqItem.userId, text);
-  } else if (reqItem.platform === 'whatsapp' && whatsappBot.enabled()) {
-    await whatsappBot.sendMessage(reqItem.userId, text);
+  // Lista de destinatarios: los votantes, o el creador si no hay votantes.
+  const targets = Array.isArray(reqItem.voters) && reqItem.voters.length
+    ? reqItem.voters
+    : [{ platform: reqItem.platform, userId: reqItem.userId }];
+  for (const tg of targets) {
+    try {
+      if (tg.platform === 'telegram' && telegramBot.enabled()) await telegramBot.sendMessage(tg.userId, text);
+      else if (tg.platform === 'whatsapp' && whatsappBot.enabled()) await whatsappBot.sendMessage(tg.userId, text);
+    } catch (e) { /* seguir con el resto */ }
   }
 }
 
@@ -183,6 +196,7 @@ const server = http.createServer(async (req, res) => {
       mercadopago: mercadopago.configured(),
       notifications: notifier.status(),
       bots: { telegram: telegramBot.enabled(), whatsapp: whatsappBot.enabled() },
+      monitor: monitor.status(),
     });
   }
 
@@ -351,6 +365,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
       if (Array.isArray(body.reminderDays)) patch.reminderDays = body.reminderDays;
+      if (body.trialHours != null) patch.trialHours = Math.max(1, parseInt(body.trialHours, 10) || 2);
       if (body.requests && typeof body.requests === 'object') {
         patch.requests = {};
         if (body.requests.enabled != null) patch.requests.enabled = Boolean(body.requests.enabled);
@@ -453,6 +468,33 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, adminView(sub));
     }
 
+    // Otorgar una PRUEBA GRATIS por horas (con creación opcional en Jellyfin)
+    if (method === 'POST' && path === '/api/v1/admin/trial') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      const username = (body.username || '').trim().toLowerCase();
+      const hours = parseInt(body.hours, 10) || settings.get().trialHours || 2;
+      if (!username) return json(res, 400, { error: 'username requerido' });
+      if (!/^[a-z0-9._-]{1,64}$/.test(username)) {
+        return json(res, 400, { error: 'username inválido (usa letras, números, . _ -)' });
+      }
+      if (hours <= 0 || hours > 720) {
+        return json(res, 400, { error: 'las horas deben estar entre 1 y 720' });
+      }
+      if (body.create && jellyfin.configured()) {
+        try {
+          await jellyfin.createUser(username, body.password || '');
+        } catch (e) {
+          return json(res, 400, { error: 'Jellyfin: ' + e.message });
+        }
+      }
+      const screens = parseInt(body.screens, 10) || 2;
+      const sub = store.grantHours(username, hours, { phone: body.phone, screens, source: 'manual' });
+      await syncJellyfin(sub);
+      logger.audit('admin.trial', { ip, username, hours });
+      return json(res, 200, adminView(sub));
+    }
+
     // Otorgar/extender suscripción
     if (method === 'POST' && path === '/api/v1/admin/grant') {
       const body = await readBody(req);
@@ -529,14 +571,19 @@ const server = http.createServer(async (req, res) => {
 
 // Tarea periódica (cada 12h): deshabilita en Jellyfin las cuentas vencidas.
 // Es la red de seguridad del "candado".
-function syncExpired() {
+// Sweep inteligente: recorre a todos y SOLO aplica cambios de estado en Jellyfin
+// (así una prueba de pocas horas se deshabilita a tiempo sin recargar el servidor).
+function syncSweep(force = false) {
   if (!jellyfin.configured()) return;
   for (const sub of store.list()) {
     const enabled = store.isActive(sub);
+    const prev = appliedEnabled.get(sub.username);
+    if (!force && prev === enabled) continue; // sin cambios: no tocar Jellyfin
     const screens = parseInt(sub.screens, 10) || 2;
-    jellyfin.setDisabled(sub.username, !enabled, screens).catch((e) =>
-      logger.audit('jellyfin.sync', { ok: false, username: sub.username, error: e.message }),
-    );
+    jellyfin
+      .setDisabled(sub.username, !enabled, screens)
+      .then(() => appliedEnabled.set(sub.username, enabled))
+      .catch((e) => logger.audit('jellyfin.sync', { ok: false, username: sub.username, error: e.message }));
   }
 }
 
@@ -545,8 +592,10 @@ function syncExpired() {
 store.setBeforeSaveHook(() => backup.backupNow('presave'));
 backup.scheduleDaily();
 reminders.schedule(6); // recordatorios cada 6h
-setInterval(syncExpired, 12 * 60 * 60 * 1000);
+setInterval(() => syncSweep(false), 5 * 60 * 1000); // revisa vencimientos/pruebas cada 5 min
+setTimeout(() => syncSweep(true), 3000); // sincronización completa al arrancar
 telegramBot.start(); // bot de pedidos por long polling (si está habilitado)
+monitor.schedule(); // monitor de caídas de Jellyfin (avisa por Telegram)
 
 // Aviso si la clave admin quedó por defecto (riesgo de seguridad).
 if (ADMIN_KEY === 'cambia-esta-clave-admin') {
@@ -559,6 +608,7 @@ server.listen(PORT, () => {
   console.log(`Mercado Pago ${mercadopago.configured() ? 'CONFIGURADO' : 'no configurado'}`);
   console.log(`Notificaciones: ${notifier.status().providers.join(', ') || 'console'}`);
   console.log(`Bots -> Telegram: ${telegramBot.enabled() ? 'ON' : 'off'} | WhatsApp: ${whatsappBot.enabled() ? 'ON' : 'off'}`);
+  console.log(`Monitor de Jellyfin: ${monitor.status().enabled ? 'ON' : 'off'}`);
 });
 
 module.exports = server;

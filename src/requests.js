@@ -1,6 +1,7 @@
 // Pedidos de películas/series (sin dependencias).
-// Los envían los usuarios por el bot de Telegram/WhatsApp con "!pedir <título>".
-// Se guardan en data/requests.json con estado y forman una cola.
+// Los envían los usuarios por el bot con "!pedir <título>". Se guardan en
+// data/requests.json. Si varios piden el MISMO título (pendiente), se AGRUPAN
+// sumando votos en vez de duplicar, y la cola se ordena por más votados.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -8,10 +9,8 @@ const crypto = require('crypto');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const FILE = path.join(DATA_DIR, 'requests.json');
 
-// Estados posibles de un pedido.
 const STATUS = ['pendiente', 'aprobado', 'cumplido', 'rechazado'];
-// Estados que "cuentan" para el límite semanal (no penalizamos los rechazados).
-const COUNTED = ['pendiente', 'aprobado', 'cumplido'];
+const COUNTED = ['pendiente', 'aprobado', 'cumplido']; // cuentan para el límite
 
 function ensure() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -33,38 +32,75 @@ function save(data) {
   ensure();
   const tmp = FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, FILE); // escritura atómica
+  fs.renameSync(tmp, FILE);
 }
 
-// ¿Cuándo fue el último pedido "que cuenta" de este usuario?
-function lastCountedAt(platform, userId) {
-  const mine = load().requests.filter(
-    (r) => r.platform === platform && r.userId === String(userId) && COUNTED.includes(r.status),
-  );
-  if (mine.length === 0) return 0;
-  return Math.max(...mine.map((r) => new Date(r.createdAt).getTime() || 0));
+// Normaliza títulos para detectar duplicados (sin acentos, signos ni mayúsculas).
+function normTitle(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-// ¿Puede pedir? Aplica el límite (maxPerWindow por windowDays).
+const votesOf = (r) => (Array.isArray(r.voters) ? r.voters.length : 1);
+
+// Momento en que un usuario participó en un pedido (como creador o votante).
+function participationTime(r, platform, userId) {
+  if (Array.isArray(r.voters)) {
+    const v = r.voters.find((x) => x.platform === platform && x.userId === String(userId));
+    if (v) return new Date(v.at).getTime() || 0;
+  }
+  if (r.platform === platform && r.userId === String(userId)) {
+    return new Date(r.createdAt).getTime() || 0;
+  }
+  return null;
+}
+
+// ¿Puede pedir? Límite: maxPerWindow pedidos (o votos) por windowDays.
 function canRequest(platform, userId, windowDays, maxPerWindow) {
   const since = Date.now() - windowDays * 86400000;
-  const mine = load().requests.filter(
-    (r) =>
-      r.platform === platform &&
-      r.userId === String(userId) &&
-      COUNTED.includes(r.status) &&
-      (new Date(r.createdAt).getTime() || 0) >= since,
-  );
-  if (mine.length < maxPerWindow) return { ok: true };
-  // Calcula cuándo se libera el cupo (cuando el más viejo salga de la ventana).
-  const oldest = Math.min(...mine.map((r) => new Date(r.createdAt).getTime() || 0));
-  const nextAt = oldest + windowDays * 86400000;
-  return { ok: false, nextAt, count: mine.length };
+  const times = [];
+  for (const r of load().requests) {
+    if (!COUNTED.includes(r.status)) continue;
+    const t = participationTime(r, platform, userId);
+    if (t != null && t >= since) times.push(t);
+  }
+  if (times.length < maxPerWindow) return { ok: true };
+  const oldest = Math.min(...times);
+  return { ok: false, nextAt: oldest + windowDays * 86400000, count: times.length };
 }
 
-// Agrega un pedido. Devuelve el pedido y su posición en la cola.
+// ¿El usuario ya está en este pedido pendiente?
+function userInRequest(r, platform, userId) {
+  return participationTime(r, platform, userId) != null;
+}
+
+// Agrega un pedido o suma un voto si el título ya está pendiente.
+// Devuelve { request, voted, votes, already }.
 function add({ platform, userId, userName, title }) {
   const data = load();
+  const nt = normTitle(title);
+  const now = new Date().toISOString();
+  const voter = { platform, userId: String(userId), userName: userName || '', at: now };
+
+  const existing = data.requests.find((r) => r.status === 'pendiente' && normTitle(r.title) === nt);
+  if (existing) {
+    existing.voters = existing.voters || [
+      { platform: existing.platform, userId: existing.userId, userName: existing.userName, at: existing.createdAt },
+    ];
+    if (userInRequest(existing, platform, userId)) {
+      return { request: existing, voted: false, already: true, votes: votesOf(existing) };
+    }
+    existing.voters.push(voter);
+    existing.updatedAt = now;
+    save(data);
+    return { request: existing, voted: true, votes: votesOf(existing) };
+  }
+
   const req = {
     id: 'r' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'),
     platform,
@@ -73,37 +109,44 @@ function add({ platform, userId, userName, title }) {
     title: String(title).slice(0, 300),
     status: 'pendiente',
     note: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    voters: [voter],
+    createdAt: now,
+    updatedAt: now,
   };
   data.requests.push(req);
   save(data);
-  return { request: req, position: queuePosition(req.id) };
+  return { request: req, voted: false, votes: 1 };
 }
 
-// Posición del pedido dentro de la cola de pendientes (1 = próximo).
-function queuePosition(id) {
-  const pending = load()
+// Cola de pendientes ordenada por votos (desc) y luego por antigüedad.
+function queue() {
+  return load()
     .requests.filter((r) => r.status === 'pendiente')
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const idx = pending.findIndex((r) => r.id === id);
+    .sort((a, b) => votesOf(b) - votesOf(a) || a.createdAt.localeCompare(b.createdAt));
+}
+
+function queuePosition(id) {
+  const idx = queue().findIndex((r) => r.id === id);
   return idx === -1 ? 0 : idx + 1;
 }
 
 function list(filter = {}) {
-  let rows = load().requests.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  let rows = load().requests.slice();
   if (filter.status) rows = rows.filter((r) => r.status === filter.status);
   if (filter.platform) rows = rows.filter((r) => r.platform === filter.platform);
-  return rows;
+  // Pendientes por votos; el resto por fecha reciente.
+  rows.sort((a, b) => {
+    if (a.status === 'pendiente' && b.status === 'pendiente') {
+      return votesOf(b) - votesOf(a) || a.createdAt.localeCompare(b.createdAt);
+    }
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+  return rows.map((r) => ({ ...r, votes: votesOf(r) }));
 }
 
-// Pedidos pendientes de un usuario concreto.
 function pendingForUser(platform, userId) {
   return load()
-    .requests.filter(
-      (r) => r.platform === platform && r.userId === String(userId) && r.status === 'pendiente',
-    )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    .requests.filter((r) => r.status === 'pendiente' && userInRequest(r, platform, userId));
 }
 
 function setStatus(id, status, note) {
@@ -115,7 +158,7 @@ function setStatus(id, status, note) {
   if (note != null) req.note = String(note).slice(0, 500);
   req.updatedAt = new Date().toISOString();
   save(data);
-  return req;
+  return { ...req, votes: votesOf(req) };
 }
 
 function stats() {
@@ -130,6 +173,6 @@ function stats() {
 }
 
 module.exports = {
-  STATUS, add, list, setStatus, canRequest, queuePosition,
-  pendingForUser, lastCountedAt, stats,
+  STATUS, add, list, setStatus, canRequest, queue, queuePosition,
+  pendingForUser, stats, votesOf, normTitle,
 };

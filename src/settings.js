@@ -17,6 +17,8 @@ const DEFAULTS = {
   planDays: { mensual: 30, trimestral: 90, anual: 365 },
   // A cuántos días del vencimiento se avisa al suscriptor.
   reminderDays: [7, 3, 1],
+  // Duración por defecto de una prueba gratis (en horas).
+  trialHours: 2,
   // Bots de pedidos de películas/series (Telegram/WhatsApp).
   requests: {
     enabled: true,       // aceptar pedidos

@@ -81,6 +81,7 @@
   .badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
   .badge.activo { background:rgba(52,211,153,.13); color:var(--green); } .badge.vencido { background:rgba(251,113,133,.13); color:var(--red); }
   .badge.porvencer { background:rgba(251,191,36,.13); color:var(--amber); } .badge.baneado { background:rgba(148,148,163,.18); color:#c9c4d6; }
+  .badge.prueba { background:rgba(96,165,250,.15); color:var(--blue); }
   .phone-link { color:var(--purple); text-decoration:none; } .phone-link:hover { text-decoration:underline; }
   .actions { display:flex; gap:7px; justify-content:flex-end; align-items:center; }
   .empty { text-align:center; padding:46px 20px; color:var(--muted); }
@@ -140,7 +141,10 @@
     <div class="view show" id="view-dashboard">
       <div class="topbar">
         <div><h2>Panel de suscripciones</h2><div class="sub">Gestiona los accesos y las finanzas de tu servicio</div></div>
-        <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button class="btn ghost" onclick="abrirPrueba()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Prueba gratis</button>
+          <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
+        </div>
       </div>
 
       <div id="alertBox"></div>
@@ -164,6 +168,7 @@
             <button data-f="activo" onclick="filtro('activo')">Activos</button>
             <button data-f="porvencer" onclick="filtro('porvencer')">Por vencer</button>
             <button data-f="vencido" onclick="filtro('vencido')">Vencidos</button>
+            <button data-f="prueba" onclick="filtro('prueba')">Pruebas</button>
             <button data-f="baneado" onclick="filtro('baneado')">Baneados</button>
           </div>
           <div class="tools">
@@ -188,6 +193,7 @@
         </div>
         <div class="field"><label>Recordatorios de vencimiento (días, separados por coma)</label><input id="cReminders" class="inp" style="max-width:220px" value="7,3,1" /></div>
         <div class="field"><label>Link de recomendaciones (comando !recomendaciones)</label><input id="cRecUrl" class="inp" placeholder="Vacío = usa la página integrada /catalogo" /></div>
+        <div class="field"><label>Duración por defecto de la prueba gratis (horas)</label><input id="cTrialHours" class="inp" style="max-width:140px" type="number" min="1" value="2" /></div>
         <button class="btn" onclick="guardarConfig()">Guardar cambios</button>
       </div>
     </div>
@@ -270,6 +276,27 @@
   </div>
 </div>
 
+<!-- Modal prueba gratis -->
+<div class="overlay" id="trialOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3>Prueba gratis (por horas)</h3><div class="x" onclick="cerrar('trialOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-body">
+      <div class="field"><label>Usuario (el mismo de Jellyfin)</label><input id="tUser" class="inp" placeholder="ej: juan" /></div>
+      <label style="display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:16px; cursor:pointer">
+        <input type="checkbox" id="tCreate" onchange="document.getElementById('tPassField').style.display=this.checked?'block':'none'" style="width:18px; height:18px; accent-color:#7C3AED" />
+        Crear cuenta nueva en Jellyfin
+      </label>
+      <div class="field" id="tPassField" style="display:none"><label>Contraseña del nuevo usuario</label><input id="tPass" class="inp" type="text" placeholder="ej: espe1234" /></div>
+      <div class="field" style="display:flex; gap:12px">
+        <div style="flex:1"><label>Horas</label><input id="tHours" class="inp" type="number" min="1" max="720" value="2" /></div>
+        <div style="flex:1"><label>Pantallas</label><input id="tScreens" class="inp" type="number" min="1" value="1" /></div>
+      </div>
+      <div class="field"><label>Teléfono (opcional)</label><input id="tPhone" class="inp" placeholder="ej: +593 99 123 4567" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="cerrar('trialOverlay')">Cancelar</button><button class="btn" onclick="otorgarPrueba()">Activar prueba</button></div>
+  </div>
+</div>
+
 <!-- Modal editar teléfono -->
 <div class="overlay" id="phoneOverlay">
   <div class="modal">
@@ -314,8 +341,8 @@
   function salir(){ sessionStorage.removeItem(KEY); location.reload(); }
   function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); }
 
-  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cRecUrl').value=CFG.recommendationsUrl||''; } }
-  async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',recommendationsUrl:document.getElementById('cRecUrl').value.trim(),prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
+  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cRecUrl').value=CFG.recommendationsUrl||''; document.getElementById('cTrialHours').value=CFG.trialHours||2; } }
+  async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',recommendationsUrl:document.getElementById('cRecUrl').value.trim(),trialHours:parseInt(document.getElementById('cTrialHours').value,10)||2,prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
 
   async function cargarSistema(){
     try {
@@ -362,18 +389,21 @@
   function renderPedidos(){
     let list=PEDIDOS.slice();
     if(RQFILTER!=='todos') list=list.filter(r=>r.status===RQFILTER);
-    // La cola (pendientes) se muestra en orden de llegada.
-    if(RQFILTER==='pendiente') list.sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+    // La cola (pendientes) se ordena por más votados y luego por antigüedad.
+    if(RQFILTER==='pendiente') list.sort((a,b)=>(b.votes||1)-(a.votes||1)||a.createdAt.localeCompare(b.createdAt));
     const wrap=document.getElementById('pedidosWrap');
     if(list.length===0){ wrap.innerHTML='<div class="empty">Sin pedidos en esta categoría.</div>'; return; }
     const badgeCls={pendiente:'porvencer',aprobado:'activo',cumplido:'activo',rechazado:'vencido'};
     const plat=(p)=>p==='telegram'?'✈️ Telegram':p==='whatsapp'?'🟢 WhatsApp':p;
-    let h='<table><thead><tr><th>#</th><th>Título</th><th>Usuario</th><th>Origen</th><th>Estado</th><th>Fecha</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    let h='<table><thead><tr><th>#</th><th>Votos</th><th>Título</th><th>Pedido por</th><th>Origen</th><th>Estado</th><th>Fecha</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
     list.forEach((r,i)=>{
       const fecha=new Date(r.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
       const num=RQFILTER==='pendiente'?(i+1):'—';
+      const votes=r.votes||1;
+      const voteBadge=votes>1?`<span class="badge prueba">🔥 ${votes}</span>`:`<span style="color:var(--muted)">${votes}</span>`;
       h+=`<tr>
         <td><b>${num}</b></td>
+        <td>${voteBadge}</td>
         <td><b>${escapeHtml(r.title)}</b>${r.note?'<div class="meta" style="color:var(--muted);font-size:12px">'+escapeHtml(r.note)+'</div>':''}</td>
         <td>${escapeHtml(r.userName||r.userId)}</td>
         <td style="font-size:13px">${plat(r.platform)}</td>
@@ -425,13 +455,17 @@
   function render(){
     const q=document.getElementById('buscar').value.trim().toLowerCase();
     let list=SUBS.filter(s=>s.username.includes(q)||digits(s.phone).includes(digits(q)));
-    if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
+    if(FILTER==='prueba') list=list.filter(s=>s.is_trial);
+    else if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
     const wrap=document.getElementById('tablaWrap');
     if(list.length===0){ wrap.innerHTML='<div class="empty">'+(SUBS.length===0?'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.':'Sin resultados.')+'</div>'; return; }
     let h='<table><thead><tr><th>Usuario</th><th>Teléfono</th><th>Estado</th><th>Plan</th><th>Pantallas</th><th>Vence</th><th>Días</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
     for(const s of list){
-      const vence=s.expires_at?new Date(s.expires_at).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}):'—';
-      const e=estado(s); const txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
+      const esTrial=s.is_trial&&s.subActive&&!s.banned;
+      const vence=s.expires_at?new Date(s.expires_at).toLocaleString('es-AR',esTrial?{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}:{day:'2-digit',month:'short',year:'numeric'}):'—';
+      let e=estado(s), txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
+      if(esTrial){ e='prueba'; txt='Prueba'; }
+      const restante=esTrial?(s.hours_left+'h'):(s.days_left+'d');
       const tel=s.phone?`<a class="phone-link" href="https://wa.me/${digits(s.phone)}" target="_blank">${s.phone}</a>`:'—';
       const banIcon=s.banned
         ? `<button class="icobtn amber" title="Desbanear" onclick="banear('${s.username}',false)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>`
@@ -440,7 +474,7 @@
         <td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
         <td>${tel}</td>
         <td><span class="badge ${e}">${txt}</span></td>
-        <td>${s.plan||'—'}</td><td>${s.screens||2} 📺</td><td>${vence}</td><td>${s.days_left}d</td>
+        <td>${esTrial?'🎁 prueba':(s.plan||'—')}</td><td>${s.screens||2} 📺</td><td>${vence}</td><td>${restante}</td>
         <td><div class="actions">
           <button class="btn sm ghost" onclick="renovar('${s.username}')">+30d</button>
           <button class="icobtn" title="Editar suscriptor" onclick="editarTel('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
@@ -453,6 +487,16 @@
   }
 
   function abrirModal(){ document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
+  function abrirPrueba(){ document.getElementById('tHours').value=(CFG.trialHours||2); document.getElementById('trialOverlay').classList.add('show'); document.getElementById('tUser').focus(); }
+  async function otorgarPrueba(){
+    const username=document.getElementById('tUser').value.trim().toLowerCase();
+    const hours=parseInt(document.getElementById('tHours').value,10);
+    if(!username||!hours) return toast('Completa usuario y horas','err');
+    const payload={username,hours,phone:document.getElementById('tPhone').value.trim(),screens:parseInt(document.getElementById('tScreens').value,10)||1,create:document.getElementById('tCreate').checked,password:document.getElementById('tPass').value};
+    const r=await fetch('/api/v1/admin/trial',{method:'POST',headers:headers(),body:JSON.stringify(payload)});
+    if(r.ok){ toast('Prueba de '+hours+'h activada para "'+username+'"','ok'); document.getElementById('tUser').value=''; document.getElementById('tPass').value=''; document.getElementById('tPhone').value=''; document.getElementById('tCreate').checked=false; document.getElementById('tPassField').style.display='none'; cerrar('trialOverlay'); cargar(); }
+    else { let m='Error al activar la prueba'; try{ m=(await r.json()).error||m; }catch(e){} toast(m,'err'); }
+  }
   function cerrar(id){ document.getElementById(id).classList.remove('show'); }
   function toggleCreate(){ document.getElementById('passField').style.display=document.getElementById('gCreate').checked?'block':'none'; }
 

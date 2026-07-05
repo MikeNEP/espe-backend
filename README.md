@@ -133,13 +133,28 @@ POST /api/v1/webhook/mercadopago
 Si no hay canal directo al usuario, el recordatorio cae al admin con el link `wa.me` listo para enviar.
 Los recordatorios se envían a los días configurados en `reminderDays` (por defecto 7, 3 y 1), sin repetir, y se resetean al renovar.
 
+## Pruebas gratis (por horas)
+
+Desde el panel (**Prueba gratis**) das acceso temporal medido en **horas** (no días).
+- Crea/renueva al usuario con plan `prueba` y vence a las X horas.
+- Un **sweep cada 5 minutos** deshabilita la cuenta en Jellyfin apenas expira (no espera al ciclo diario).
+- La duración por defecto se configura en **Configuración → Duración de la prueba** (`trialHours`).
+- Endpoint: `POST /api/v1/admin/trial` `{ username, hours, create?, password?, phone?, screens? }`.
+
+## Monitor de Jellyfin (caídas)
+
+Si tu servidor Jellyfin deja de responder, el backend te **avisa por Telegram** (o el canal que uses).
+- Chequea cada `MONITOR_INTERVAL_MIN` minutos (5 por defecto).
+- Avisa tras `MONITOR_FAIL_THRESHOLD` fallos seguidos (2 por defecto) y **también cuando se recupera**.
+- Se apaga con `JELLYFIN_MONITOR=false`. Estado visible en `/health`.
+
 ## Bots de pedidos (películas/series)
 
 Los usuarios piden contenido por **Telegram** o **WhatsApp** con un comando, y tú los
 gestionas desde el panel (**Pedidos**). Límite configurable: por defecto **1 pedido cada 7 días** por usuario.
 
 ### Comandos
-- `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`). Límite configurable por usuario.
+- `!pedir <título>` — pide una película o serie (ej. `!pedir Interestelar`). Límite configurable por usuario. Si el título ya está en tu catálogo, avisa que está disponible; si otro ya lo pidió, **suma un voto** y sube en la cola.
 - `!recomendaciones` — envía el link a la **página de catálogo** (en español) donde el usuario ve todo lo disponible hoy.
 - `!nuevos` — lista los últimos títulos agregados (desde Jellyfin).
 - `!ayuda` — muestra la ayuda.
