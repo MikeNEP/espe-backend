@@ -15,6 +15,32 @@ function fmtDate(ms) {
   }
 }
 
+// Normaliza texto para comparar: minúsculas, sin acentos ni signos.
+function norm(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Busca una coincidencia fuerte entre lo pedido y los resultados del catálogo.
+// Es conservador: ante la duda, no dice "ya disponible" (mejor un pedido de más).
+function bestCatalogMatch(query, items) {
+  const q = norm(query);
+  if (!q) return null;
+  for (const it of items) {
+    if (norm(it.name) === q) return it; // coincidencia exacta
+  }
+  for (const it of items) {
+    const n = norm(it.name);
+    if (q.length >= 4 && (n.includes(q) || q.includes(n))) return it;
+  }
+  return null;
+}
+
 // Separa "!pedir Interestelar" -> { cmd: 'pedir', arg: 'Interestelar' }
 function parse(text, prefix) {
   const t = (text || '').trim();
@@ -105,6 +131,21 @@ async function handleMessage(message) {
     }
     if (!parsed.arg) {
       return { reply: `Escribe el título después del comando.\nEjemplo: ${prefix}pedir Interestelar` };
+    }
+    // ¿Ya está en el catálogo? Si sí, evitamos un pedido repetido y avisamos.
+    if (jellyfin.configured()) {
+      try {
+        const hit = bestCatalogMatch(parsed.arg, await jellyfin.searchCatalog(parsed.arg));
+        if (hit) {
+          return {
+            reply:
+              `🎉 ¡Ya está disponible en ${biz}!\n` +
+              `Búscalo como "${hit.name}"${hit.year ? ` (${hit.year})` : ''} y disfrútalo. 🍿`,
+          };
+        }
+      } catch (e) {
+        // Si la búsqueda falla, seguimos con el pedido normal (no bloqueamos al usuario).
+      }
     }
     const gate = requests.canRequest(
       message.platform, message.userId, cfg.requests.windowDays, cfg.requests.maxPerWindow,

@@ -118,16 +118,33 @@ async function createUser(username, password) {
 
 // Elige un userId para consultar la biblioteca (Jellyfin lo requiere).
 // Usa JELLYFIN_CATALOG_USER si está definido; si no, el primer usuario.
+// Se memoriza para no consultar /Users en cada búsqueda.
+let _cachedUserId = null;
 async function pickUserId() {
+  if (_cachedUserId) return _cachedUserId;
   const preferred = process.env.JELLYFIN_CATALOG_USER;
   if (preferred) {
     const id = await findUserId(preferred);
-    if (id) return id;
+    if (id) { _cachedUserId = id; return id; }
   }
   const res = await jfFetch('/Users');
   if (!res.ok) throw new Error(`Jellyfin /Users devolvió ${res.status}`);
   const users = await res.json();
-  return users[0] ? users[0].Id : null;
+  _cachedUserId = users[0] ? users[0].Id : null;
+  return _cachedUserId;
+}
+
+// Busca títulos en la biblioteca por término (para saber si algo ya está disponible).
+async function searchCatalog(term, limit = 8) {
+  if (!configured()) return [];
+  const userId = await pickUserId();
+  if (!userId) return [];
+  const res = await jfFetch(
+    `/Items?userId=${userId}&Recursive=true&IncludeItemTypes=Movie,Series&SearchTerm=${encodeURIComponent(term)}&Limit=${limit}&Fields=ProductionYear`,
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.Items || []).map((i) => ({ name: i.Name, year: i.ProductionYear || null, type: i.Type }));
 }
 
 async function countItems(userId, type) {
@@ -204,5 +221,5 @@ async function fetchImage(id) {
 
 module.exports = {
   configured, setDisabled, findUserId, createUser, setPassword,
-  getCatalogSummary, getLatest, getFullCatalog, fetchImage,
+  getCatalogSummary, getLatest, getFullCatalog, fetchImage, searchCatalog,
 };
