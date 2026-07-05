@@ -81,6 +81,7 @@
   .badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
   .badge.activo { background:rgba(52,211,153,.13); color:var(--green); } .badge.vencido { background:rgba(251,113,133,.13); color:var(--red); }
   .badge.porvencer { background:rgba(251,191,36,.13); color:var(--amber); } .badge.baneado { background:rgba(148,148,163,.18); color:#c9c4d6; }
+  .badge.prueba { background:rgba(96,165,250,.15); color:var(--blue); }
   .phone-link { color:var(--purple); text-decoration:none; } .phone-link:hover { text-decoration:underline; }
   .actions { display:flex; gap:7px; justify-content:flex-end; align-items:center; }
   .empty { text-align:center; padding:46px 20px; color:var(--muted); }
@@ -127,6 +128,8 @@
     <nav>
       <a class="active" data-view="dashboard" onclick="verVista('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> Panel</a>
       <a data-view="config" onclick="verVista('config')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
+      <a data-view="requests" onclick="verVista('requests'); cargarPedidos()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Pedidos</a>
+      <a data-view="system" onclick="verVista('system'); cargarSistema()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg> Sistema</a>
     </nav>
     <div class="side-foot">
       <div class="logout" onclick="salir()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Cerrar sesión</div>
@@ -138,7 +141,10 @@
     <div class="view show" id="view-dashboard">
       <div class="topbar">
         <div><h2>Panel de suscripciones</h2><div class="sub">Gestiona los accesos y las finanzas de tu servicio</div></div>
-        <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button class="btn ghost" onclick="abrirPrueba()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Prueba gratis</button>
+          <button class="btn" onclick="abrirModal()"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo suscriptor</button>
+        </div>
       </div>
 
       <div id="alertBox"></div>
@@ -162,6 +168,7 @@
             <button data-f="activo" onclick="filtro('activo')">Activos</button>
             <button data-f="porvencer" onclick="filtro('porvencer')">Por vencer</button>
             <button data-f="vencido" onclick="filtro('vencido')">Vencidos</button>
+            <button data-f="prueba" onclick="filtro('prueba')">Pruebas</button>
             <button data-f="baneado" onclick="filtro('baneado')">Baneados</button>
           </div>
           <div class="tools">
@@ -177,13 +184,71 @@
       <div class="topbar"><div><h2>Configuración</h2><div class="sub">Precios y moneda de tu servicio</div></div></div>
       <div class="cfg-card">
         <h3>Precios de los planes</h3><div class="desc">Se usan para calcular ingresos, MRR y el monto de cada pago.</div>
+        <div class="field"><label>Nombre del negocio</label><input id="cBusiness" class="inp" value="ESPE Player" /></div>
         <div class="field"><label>Símbolo de moneda</label><input id="cCurrency" class="inp" style="max-width:120px" value="$" /></div>
         <div class="price-row">
           <div><label>Mensual</label><input id="cMensual" class="inp" type="number" value="0" /></div>
           <div><label>Trimestral</label><input id="cTrimestral" class="inp" type="number" value="0" /></div>
           <div><label>Anual</label><input id="cAnual" class="inp" type="number" value="0" /></div>
         </div>
+        <div class="field"><label>Recordatorios de vencimiento (días, separados por coma)</label><input id="cReminders" class="inp" style="max-width:220px" value="7,3,1" /></div>
+        <div class="field"><label>Link de recomendaciones (comando !recomendaciones)</label><input id="cRecUrl" class="inp" placeholder="Vacío = usa la página integrada /catalogo" /></div>
+        <div class="field"><label>Duración por defecto de la prueba gratis (horas)</label><input id="cTrialHours" class="inp" style="max-width:140px" type="number" min="1" value="2" /></div>
         <button class="btn" onclick="guardarConfig()">Guardar cambios</button>
+      </div>
+    </div>
+
+    <div class="view" id="view-system">
+      <div class="topbar"><div><h2>Sistema</h2><div class="sub">Notificaciones, backups y registro de auditoría</div></div>
+        <button class="btn ghost" onclick="cargarSistema()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar</button>
+      </div>
+
+      <div class="revenue" style="margin-bottom:20px">
+        <div class="rev-card">
+          <div class="label"><svg width="16" height="16" fill="none" stroke="var(--purple)" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaciones</div>
+          <div id="notifStatus" style="font-size:13.5px; color:var(--muted); margin:10px 0 14px">Cargando…</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button class="btn sm" onclick="probarNotif()">Enviar prueba</button>
+            <button class="btn ghost sm" onclick="correrRecordatorios()">Correr recordatorios</button>
+          </div>
+        </div>
+        <div class="rev-card">
+          <div class="label"><svg width="16" height="16" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Backups</div>
+          <div id="backupInfo" style="font-size:13.5px; color:var(--muted); margin:10px 0 14px">Cargando…</div>
+          <button class="btn sm" onclick="crearBackup()">Crear backup ahora</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Registro de auditoría</h3><span class="sub" style="color:var(--muted); font-size:12.5px">Últimos eventos</span></div>
+        <div id="auditWrap"><div class="empty">Cargando…</div></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-requests">
+      <div class="topbar">
+        <div><h2>Pedidos de contenido</h2><div class="sub">Películas y series pedidas por los usuarios vía bot</div></div>
+        <button class="btn ghost" onclick="cargarPedidos()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar</button>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="ico a"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="label">Pendientes</div><div class="num" id="rqPend">0</div></div>
+        <div class="kpi"><div class="ico p"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div><div class="label">Aprobados</div><div class="num" id="rqAprob">0</div></div>
+        <div class="kpi"><div class="ico g"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="label">Cumplidos</div><div class="num" id="rqCumpl">0</div></div>
+        <div class="kpi"><div class="ico r"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div class="label">Rechazados</div><div class="num" id="rqRech">0</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="tabs" id="rqTabs">
+            <button class="active" data-f="pendiente" onclick="filtroPedidos('pendiente')">Cola</button>
+            <button data-f="todos" onclick="filtroPedidos('todos')">Todos</button>
+            <button data-f="aprobado" onclick="filtroPedidos('aprobado')">Aprobados</button>
+            <button data-f="cumplido" onclick="filtroPedidos('cumplido')">Cumplidos</button>
+            <button data-f="rechazado" onclick="filtroPedidos('rechazado')">Rechazados</button>
+          </div>
+        </div>
+        <div id="pedidosWrap"><div class="empty">Cargando…</div></div>
       </div>
     </div>
   </main>
@@ -208,6 +273,27 @@
       </div>
     </div>
     <div class="modal-foot"><button class="btn ghost" onclick="cerrar('overlay')">Cancelar</button><button class="btn" onclick="otorgar()">Otorgar acceso</button></div>
+  </div>
+</div>
+
+<!-- Modal prueba gratis -->
+<div class="overlay" id="trialOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3>Prueba gratis (por horas)</h3><div class="x" onclick="cerrar('trialOverlay')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div></div>
+    <div class="modal-body">
+      <div class="field"><label>Usuario (el mismo de Jellyfin)</label><input id="tUser" class="inp" placeholder="ej: juan" /></div>
+      <label style="display:flex; align-items:center; gap:9px; font-size:14px; color:var(--text); margin-bottom:16px; cursor:pointer">
+        <input type="checkbox" id="tCreate" onchange="document.getElementById('tPassField').style.display=this.checked?'block':'none'" style="width:18px; height:18px; accent-color:#7C3AED" />
+        Crear cuenta nueva en Jellyfin
+      </label>
+      <div class="field" id="tPassField" style="display:none"><label>Contraseña del nuevo usuario</label><input id="tPass" class="inp" type="text" placeholder="ej: espe1234" /></div>
+      <div class="field" style="display:flex; gap:12px">
+        <div style="flex:1"><label>Horas</label><input id="tHours" class="inp" type="number" min="1" max="720" value="2" /></div>
+        <div style="flex:1"><label>Pantallas</label><input id="tScreens" class="inp" type="number" min="1" value="1" /></div>
+      </div>
+      <div class="field"><label>Teléfono (opcional)</label><input id="tPhone" class="inp" placeholder="ej: +593 99 123 4567" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="cerrar('trialOverlay')">Cancelar</button><button class="btn" onclick="otorgarPrueba()">Activar prueba</button></div>
   </div>
 </div>
 
@@ -255,8 +341,88 @@
   function salir(){ sessionStorage.removeItem(KEY); location.reload(); }
   function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); }
 
-  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; } }
-  async function guardarConfig(){ const b={currency:document.getElementById('cCurrency').value.trim()||'$',prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value}}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
+  async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cRecUrl').value=CFG.recommendationsUrl||''; document.getElementById('cTrialHours').value=CFG.trialHours||2; } }
+  async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',recommendationsUrl:document.getElementById('cRecUrl').value.trim(),trialHours:parseInt(document.getElementById('cTrialHours').value,10)||2,prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
+
+  async function cargarSistema(){
+    try {
+      const rn=await fetch('/api/v1/admin/notify/status',{headers:headers()});
+      if(rn.ok){ const n=await rn.json(); const canales=[]; if(n.telegram)canales.push('Telegram'); if(n.whatsapp)canales.push('WhatsApp'); if(n.webhook)canales.push('Webhook'); if(canales.length===0)canales.push('Consola (solo logs)'); document.getElementById('notifStatus').innerHTML='Proveedores: <b style="color:var(--text)">'+(n.providers.join(', ')||'console')+'</b><br>Canales activos: '+canales.join(', '); }
+    } catch(e){}
+    try {
+      const rb=await fetch('/api/v1/admin/backups',{headers:headers()});
+      if(rb.ok){ const b=await rb.json(); const bs=b.backups||[]; const last=bs[0]; document.getElementById('backupInfo').innerHTML=bs.length+' backup(s) guardados.'+(last?'<br>Último: '+new Date(last.mtime).toLocaleString('es-AR'):' Ninguno todavía.'); }
+    } catch(e){}
+    try {
+      const ra=await fetch('/api/v1/admin/audit?limit=60',{headers:headers()});
+      if(ra.ok){ renderAudit((await ra.json()).entries||[]); }
+    } catch(e){}
+  }
+  function renderAudit(entries){
+    const wrap=document.getElementById('auditWrap');
+    if(!entries.length){ wrap.innerHTML='<div class="empty">Sin eventos registrados todavía.</div>'; return; }
+    let h='<table><thead><tr><th>Fecha</th><th>Evento</th><th>Detalle</th></tr></thead><tbody>';
+    for(const e of entries){
+      const fecha=e.ts?new Date(e.ts).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+      const {ts,action,ok,...rest}=e; const det=Object.keys(rest).length?JSON.stringify(rest):'';
+      const color=ok===false?'var(--red)':'var(--text)';
+      h+='<tr><td style="color:var(--muted)">'+fecha+'</td><td style="color:'+color+'; font-weight:600">'+(action||'—')+'</td><td style="color:var(--muted); font-size:12.5px; word-break:break-all">'+det+'</td></tr>';
+    }
+    wrap.innerHTML=h+'</tbody></table>';
+  }
+  async function probarNotif(){ const r=await fetch('/api/v1/admin/notify/test',{method:'POST',headers:headers()}); if(r.ok){ toast('Notificación de prueba enviada','ok'); } else toast('Error al enviar','err'); }
+  async function correrRecordatorios(){ const r=await fetch('/api/v1/admin/reminders/run',{method:'POST',headers:headers()}); if(r.ok){ const d=await r.json(); toast('Recordatorios: '+(d.sent?d.sent.length:0)+' enviado(s)','ok'); cargarSistema(); } else toast('Error','err'); }
+  async function crearBackup(){ const r=await fetch('/api/v1/admin/backups',{method:'POST',headers:headers()}); if(r.ok){ toast('Backup creado','ok'); cargarSistema(); } else toast('Error al crear backup','err'); }
+
+  let PEDIDOS=[], RQFILTER='pendiente';
+  async function cargarPedidos(){
+    const r=await fetch('/api/v1/admin/requests',{headers:headers()});
+    if(!r.ok){ toast('Error al cargar pedidos','err'); return; }
+    const d=await r.json(); PEDIDOS=d.requests||[]; const s=d.stats||{};
+    document.getElementById('rqPend').textContent=s.pendiente||0;
+    document.getElementById('rqAprob').textContent=s.aprobado||0;
+    document.getElementById('rqCumpl').textContent=s.cumplido||0;
+    document.getElementById('rqRech').textContent=s.rechazado||0;
+    renderPedidos();
+  }
+  function filtroPedidos(f){ RQFILTER=f; document.querySelectorAll('#rqTabs button').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderPedidos(); }
+  function renderPedidos(){
+    let list=PEDIDOS.slice();
+    if(RQFILTER!=='todos') list=list.filter(r=>r.status===RQFILTER);
+    // La cola (pendientes) se ordena por más votados y luego por antigüedad.
+    if(RQFILTER==='pendiente') list.sort((a,b)=>(b.votes||1)-(a.votes||1)||a.createdAt.localeCompare(b.createdAt));
+    const wrap=document.getElementById('pedidosWrap');
+    if(list.length===0){ wrap.innerHTML='<div class="empty">Sin pedidos en esta categoría.</div>'; return; }
+    const badgeCls={pendiente:'porvencer',aprobado:'activo',cumplido:'activo',rechazado:'vencido'};
+    const plat=(p)=>p==='telegram'?'✈️ Telegram':p==='whatsapp'?'🟢 WhatsApp':p;
+    let h='<table><thead><tr><th>#</th><th>Votos</th><th>Título</th><th>Pedido por</th><th>Origen</th><th>Estado</th><th>Fecha</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    list.forEach((r,i)=>{
+      const fecha=new Date(r.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      const num=RQFILTER==='pendiente'?(i+1):'—';
+      const votes=r.votes||1;
+      const voteBadge=votes>1?`<span class="badge prueba">🔥 ${votes}</span>`:`<span style="color:var(--muted)">${votes}</span>`;
+      h+=`<tr>
+        <td><b>${num}</b></td>
+        <td>${voteBadge}</td>
+        <td><b>${escapeHtml(r.title)}</b>${r.note?'<div class="meta" style="color:var(--muted);font-size:12px">'+escapeHtml(r.note)+'</div>':''}</td>
+        <td>${escapeHtml(r.userName||r.userId)}</td>
+        <td style="font-size:13px">${plat(r.platform)}</td>
+        <td><span class="badge ${badgeCls[r.status]||''}">${r.status}</span></td>
+        <td style="color:var(--muted)">${fecha}</td>
+        <td><div class="actions">
+          ${r.status!=='aprobado'&&r.status!=='cumplido'?`<button class="btn sm ghost" onclick="pedidoEstado('${r.id}','aprobado')">Aprobar</button>`:''}
+          ${r.status!=='cumplido'?`<button class="btn sm" onclick="pedidoEstado('${r.id}','cumplido')">Cumplido</button>`:''}
+          ${r.status!=='rechazado'?`<button class="icobtn red" title="Rechazar" onclick="pedidoRechazar('${r.id}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:''}
+        </div></td></tr>`;
+    });
+    wrap.innerHTML=h+'</tbody></table>';
+  }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  async function pedidoEstado(id,status,note){
+    const r=await fetch('/api/v1/admin/requests/status',{method:'POST',headers:headers(),body:JSON.stringify({id,status,note})});
+    if(r.ok){ toast('Pedido '+status,'ok'); cargarPedidos(); } else toast('Error','err');
+  }
+  async function pedidoRechazar(id){ const note=prompt('Motivo del rechazo (opcional):')||''; pedidoEstado(id,'rechazado',note); }
 
   async function cargar(){ const r=await fetch('/api/v1/admin/subscribers',{headers:headers()}); if(!r.ok) return; SUBS=(await r.json()).subscribers||[]; stats(); renderAlerts(); render(); }
 
@@ -289,13 +455,17 @@
   function render(){
     const q=document.getElementById('buscar').value.trim().toLowerCase();
     let list=SUBS.filter(s=>s.username.includes(q)||digits(s.phone).includes(digits(q)));
-    if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
+    if(FILTER==='prueba') list=list.filter(s=>s.is_trial);
+    else if(FILTER!=='todos') list=list.filter(s=>estado(s)===FILTER);
     const wrap=document.getElementById('tablaWrap');
     if(list.length===0){ wrap.innerHTML='<div class="empty">'+(SUBS.length===0?'Aún no hay suscriptores. Agrega el primero con “Nuevo suscriptor”.':'Sin resultados.')+'</div>'; return; }
     let h='<table><thead><tr><th>Usuario</th><th>Teléfono</th><th>Estado</th><th>Plan</th><th>Pantallas</th><th>Vence</th><th>Días</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
     for(const s of list){
-      const vence=s.expires_at?new Date(s.expires_at).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}):'—';
-      const e=estado(s); const txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
+      const esTrial=s.is_trial&&s.subActive&&!s.banned;
+      const vence=s.expires_at?new Date(s.expires_at).toLocaleString('es-AR',esTrial?{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}:{day:'2-digit',month:'short',year:'numeric'}):'—';
+      let e=estado(s), txt=e==='activo'?'Activo':e==='porvencer'?'Por vencer':e==='baneado'?'Baneado':'Vencido';
+      if(esTrial){ e='prueba'; txt='Prueba'; }
+      const restante=esTrial?(s.hours_left+'h'):(s.days_left+'d');
       const tel=s.phone?`<a class="phone-link" href="https://wa.me/${digits(s.phone)}" target="_blank">${s.phone}</a>`:'—';
       const banIcon=s.banned
         ? `<button class="icobtn amber" title="Desbanear" onclick="banear('${s.username}',false)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>`
@@ -304,7 +474,7 @@
         <td><div class="user-cell"><div class="avatar">${s.username.charAt(0)}</div><b>${s.username}</b></div></td>
         <td>${tel}</td>
         <td><span class="badge ${e}">${txt}</span></td>
-        <td>${s.plan||'—'}</td><td>${s.screens||2} 📺</td><td>${vence}</td><td>${s.days_left}d</td>
+        <td>${esTrial?'🎁 prueba':(s.plan||'—')}</td><td>${s.screens||2} 📺</td><td>${vence}</td><td>${restante}</td>
         <td><div class="actions">
           <button class="btn sm ghost" onclick="renovar('${s.username}')">+30d</button>
           <button class="icobtn" title="Editar suscriptor" onclick="editarTel('${s.username}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
@@ -317,6 +487,16 @@
   }
 
   function abrirModal(){ document.getElementById('overlay').classList.add('show'); document.getElementById('gUser').focus(); }
+  function abrirPrueba(){ document.getElementById('tHours').value=(CFG.trialHours||2); document.getElementById('trialOverlay').classList.add('show'); document.getElementById('tUser').focus(); }
+  async function otorgarPrueba(){
+    const username=document.getElementById('tUser').value.trim().toLowerCase();
+    const hours=parseInt(document.getElementById('tHours').value,10);
+    if(!username||!hours) return toast('Completa usuario y horas','err');
+    const payload={username,hours,phone:document.getElementById('tPhone').value.trim(),screens:parseInt(document.getElementById('tScreens').value,10)||1,create:document.getElementById('tCreate').checked,password:document.getElementById('tPass').value};
+    const r=await fetch('/api/v1/admin/trial',{method:'POST',headers:headers(),body:JSON.stringify(payload)});
+    if(r.ok){ toast('Prueba de '+hours+'h activada para "'+username+'"','ok'); document.getElementById('tUser').value=''; document.getElementById('tPass').value=''; document.getElementById('tPhone').value=''; document.getElementById('tCreate').checked=false; document.getElementById('tPassField').style.display='none'; cerrar('trialOverlay'); cargar(); }
+    else { let m='Error al activar la prueba'; try{ m=(await r.json()).error||m; }catch(e){} toast(m,'err'); }
+  }
   function cerrar(id){ document.getElementById(id).classList.remove('show'); }
   function toggleCreate(){ document.getElementById('passField').style.display=document.getElementById('gCreate').checked?'block':'none'; }
 
