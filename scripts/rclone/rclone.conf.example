@@ -1,0 +1,34 @@
+# =============================================================================
+# Plantilla rclone para ESPE Player (Google Drive + rotación de service accounts)
+# Copiar a ~/.config/rclone/rclone.conf y completar los valores.
+# =============================================================================
+
+# --- Remote principal contra el Shared Drive ---------------------------------
+[gdrive]
+type = drive
+scope = drive
+# Carpeta con TODOS los .json de service accounts: rclone rota entre ellas
+# automáticamente cuando una se topa con la cuota (evita el 403 rate limit).
+service_account_file_path = /opt/espe/sa/
+# Uno cualquiera como inicial (dentro de la misma carpeta):
+service_account_file = /opt/espe/sa/sa-001.json
+# ID del Shared Drive (Unidad compartida) donde vive el contenido:
+team_drive = 0AXXXXXXXXXXXXXXXXX
+# Rendimiento
+chunk_size = 64M
+# Menos llamadas a la API en escaneos:
+fast_list = true
+
+# --- (Opcional) capa de cifrado sobre el contenido --------------------------
+# Protege los archivos en Drive. Genera las claves con:  rclone config
+[gcrypt]
+type = crypt
+remote = gdrive:media
+filename_encryption = standard
+directory_name_encryption = true
+password = REEMPLAZAR_CON_rclone_obscure
+password2 = REEMPLAZAR_CON_rclone_obscure
+
+# Uso:
+#   Sin cifrado:  rclone mount gdrive:  /mnt/espe ...
+#   Con cifrado:  rclone mount gcrypt:  /mnt/espe ...

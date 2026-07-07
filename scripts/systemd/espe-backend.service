@@ -1,0 +1,22 @@
+# Servicio del backend ESPE Player (Node, sin dependencias).
+# Instalar en /etc/systemd/system/espe-backend.service y luego:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now espe-backend
+[Unit]
+Description=ESPE Player - Backend de suscripciones
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/espe/espe-backend
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+# Carga las variables desde el archivo .env del proyecto
+EnvironmentFile=/opt/espe/espe-backend/.env
+# Endurecimiento básico
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

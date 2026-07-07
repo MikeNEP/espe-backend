@@ -1,0 +1,23 @@
+# Monta el contenido de ESPE Player (Google Drive) al arrancar el servidor.
+# Instalar en /etc/systemd/system/espe-rclone.service y luego:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now espe-rclone
+[Unit]
+Description=ESPE Player - rclone mount (Google Drive)
+After=network-online.target
+Wants=network-online.target
+AssertPathIsDirectory=/mnt/espe
+
+[Service]
+Type=notify
+# Ejecuta el script de montaje (ajusta la ruta si hace falta)
+ExecStart=/opt/espe/scripts/rclone/mount-espe.sh
+ExecStop=/bin/fusermount -uz /mnt/espe
+Restart=on-failure
+RestartSec=10
+# Variables (opcional): remote, mount, tamaño de caché
+Environment=ESPE_REMOTE=gdrive:
+Environment=ESPE_MOUNT=/mnt/espe
+Environment=ESPE_CACHE_SIZE=100G
+
+[Install]
+WantedBy=multi-user.target
