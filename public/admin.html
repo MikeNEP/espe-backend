@@ -128,6 +128,7 @@
     <nav>
       <a class="active" data-view="dashboard" onclick="verVista('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> Panel</a>
       <a data-view="config" onclick="verVista('config')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración</a>
+      <a data-view="sessions" onclick="verVista('sessions'); iniciarSesiones()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> En vivo</a>
       <a data-view="requests" onclick="verVista('requests'); cargarPedidos()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Pedidos</a>
       <a data-view="system" onclick="verVista('system'); cargarSistema()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg> Sistema</a>
     </nav>
@@ -251,6 +252,31 @@
         <div id="pedidosWrap"><div class="empty">Cargando…</div></div>
       </div>
     </div>
+
+    <div class="view" id="view-sessions">
+      <div class="topbar">
+        <div><h2>Sesiones en vivo</h2><div class="sub">Quién está viendo ahora, en qué dispositivo y con cuántas pantallas</div></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer">
+            <input type="checkbox" id="autoRefresh" checked onchange="toggleAuto()" style="width:16px; height:16px; accent-color:#7C3AED" /> Auto (10s)
+          </label>
+          <button class="btn ghost" onclick="cargarSesiones()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualizar</button>
+        </div>
+      </div>
+
+      <div id="sessAlert"></div>
+
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="ico p"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div class="label">Sesiones activas</div><div class="num" id="sTotal">0</div></div>
+        <div class="kpi"><div class="ico g"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="label">Reproduciendo</div><div class="num" id="sPlaying">0</div></div>
+        <div class="kpi"><div class="ico r"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="label">Exceso de pantallas</div><div class="num" id="sOver">0</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Dispositivos conectados</h3><span class="sub" style="color:var(--muted); font-size:12.5px" id="sHint"></span></div>
+        <div id="sessWrap"><div class="empty">Cargando…</div></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -339,7 +365,7 @@
     await cargarConfig(); cargar();
   }
   function salir(){ sessionStorage.removeItem(KEY); location.reload(); }
-  function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); }
+  function verVista(v){ document.querySelectorAll('.view').forEach(e=>e.classList.remove('show')); document.getElementById('view-'+v).classList.add('show'); document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v)); if(v!=='sessions'&&typeof pararAuto==='function') pararAuto(); }
 
   async function cargarConfig(){ const r=await fetch('/api/v1/admin/settings',{headers:headers()}); if(r.ok){ CFG=await r.json(); document.getElementById('cBusiness').value=CFG.business||'ESPE Player'; document.getElementById('cCurrency').value=CFG.currency; document.getElementById('cMensual').value=CFG.prices.mensual; document.getElementById('cTrimestral').value=CFG.prices.trimestral; document.getElementById('cAnual').value=CFG.prices.anual; document.getElementById('cReminders').value=(CFG.reminderDays||[7,3,1]).join(','); document.getElementById('cRecUrl').value=CFG.recommendationsUrl||''; document.getElementById('cTrialHours').value=CFG.trialHours||2; } }
   async function guardarConfig(){ const reminderDays=document.getElementById('cReminders').value.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n)&&n>=0); const b={business:document.getElementById('cBusiness').value.trim()||'ESPE Player',currency:document.getElementById('cCurrency').value.trim()||'$',recommendationsUrl:document.getElementById('cRecUrl').value.trim(),trialHours:parseInt(document.getElementById('cTrialHours').value,10)||2,prices:{mensual:+document.getElementById('cMensual').value,trimestral:+document.getElementById('cTrimestral').value,anual:+document.getElementById('cAnual').value},reminderDays}; const r=await fetch('/api/v1/admin/settings',{method:'POST',headers:headers(),body:JSON.stringify(b)}); if(r.ok){ CFG=await r.json(); toast('Configuración guardada','ok'); stats(); render(); } else toast('Error al guardar','err'); }
@@ -423,6 +449,85 @@
     if(r.ok){ toast('Pedido '+status,'ok'); cargarPedidos(); } else toast('Error','err');
   }
   async function pedidoRechazar(id){ const note=prompt('Motivo del rechazo (opcional):')||''; pedidoEstado(id,'rechazado',note); }
+
+  // --- Sesiones en vivo -----------------------------------------------------
+  let SESS_TIMER=null;
+  function iniciarSesiones(){ cargarSesiones(); if(document.getElementById('autoRefresh').checked) arrancarAuto(); }
+  function arrancarAuto(){ pararAuto(); SESS_TIMER=setInterval(()=>{ if(document.getElementById('view-sessions').classList.contains('show')) cargarSesiones(); else pararAuto(); },10000); }
+  function pararAuto(){ if(SESS_TIMER){ clearInterval(SESS_TIMER); SESS_TIMER=null; } }
+  function toggleAuto(){ if(document.getElementById('autoRefresh').checked) arrancarAuto(); else pararAuto(); }
+  const fmtTime=(s)=>{ s=Math.max(0,s|0); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(ss).padStart(2,'0'); };
+  const methodBadge=(m)=>{ if(!m) return ''; const map={DirectPlay:'activo',DirectStream:'porvencer',Transcode:'vencido'}; const txt={DirectPlay:'Direct Play',DirectStream:'Direct Stream',Transcode:'Transcodificando'}; return `<span class="badge ${map[m]||''}">${txt[m]||m}</span>`; };
+
+  async function cargarSesiones(){
+    let r; try { r=await fetch('/api/v1/admin/sessions',{headers:headers()}); } catch(e){ return; }
+    if(!r.ok){ toast('Error al leer sesiones','err'); return; }
+    const d=await r.json();
+    document.getElementById('sTotal').textContent=d.stats?d.stats.total:0;
+    document.getElementById('sPlaying').textContent=d.stats?d.stats.playing:0;
+    document.getElementById('sOver').textContent=d.stats?d.stats.overLimit:0;
+    const alertBox=document.getElementById('sessAlert');
+    if(d.configured===false){
+      document.getElementById('sessWrap').innerHTML='<div class="empty">Jellyfin no está configurado. Agrega JELLYFIN_URL y JELLYFIN_API_KEY en el .env para ver las sesiones.</div>';
+      alertBox.innerHTML=''; return;
+    }
+    // Aviso de usuarios que se pasan del límite de pantallas.
+    const over=(d.users||[]).filter(u=>u.over);
+    if(over.length){
+      const chips=over.map(u=>`<span class="chip">${u.username} · ${u.inUse}/${u.limit} 📺</span>`).join('');
+      alertBox.innerHTML=`<div class="alert-box"><div class="ai"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div style="flex:1"><div class="title">${over.length} usuario(s) superan su límite de pantallas</div>
+        <div style="color:var(--muted); font-size:13px">Jellyfin bloquea las reproducciones de más, pero puedes cortar sesiones manualmente aquí.</div><div class="chips">${chips}</div></div></div>`;
+    } else alertBox.innerHTML='';
+    renderSesiones(d.sessions||[]);
+    document.getElementById('sHint').textContent='Actualizado '+new Date().toLocaleTimeString('es-AR');
+  }
+
+  function renderSesiones(list){
+    const wrap=document.getElementById('sessWrap');
+    if(list.length===0){ wrap.innerHTML='<div class="empty">No hay dispositivos conectados en este momento.</div>'; return; }
+    // Reproduciendo primero.
+    list.sort((a,b)=>(b.isPlaying?1:0)-(a.isPlaying?1:0));
+    let h='<table><thead><tr><th>Usuario</th><th>Dispositivo</th><th>Reproduciendo</th><th>Método</th><th>IP</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+    for(const s of list){
+      const u=s.userName||'—';
+      const limitTxt=s.screenLimit!=null?`<span style="color:${s.userOverLimit?'var(--red)':'var(--muted)'}; font-size:12px">límite ${s.screenLimit} 📺</span>`:'';
+      const dev=`<div><b>${escapeHtml(s.deviceName||s.client||'—')}</b></div><div class="meta" style="color:var(--muted); font-size:12px">${escapeHtml(s.client||'')}${s.appVersion?' · v'+escapeHtml(s.appVersion):''}</div>`;
+      let playing='<span style="color:var(--muted)">— inactivo —</span>';
+      if(s.nowPlaying){
+        const np=s.nowPlaying;
+        const titulo=np.series?`${escapeHtml(np.series)} · ${escapeHtml(np.title)}`:escapeHtml(np.title);
+        const prog=np.runtimeSec?`${fmtTime(np.positionSec)} / ${fmtTime(np.runtimeSec)} (${np.progress}%)`:fmtTime(np.positionSec);
+        const pausa=s.isPaused?' <span class="badge baneado">⏸ pausa</span>':'';
+        playing=`<div><b>${titulo}</b>${pausa}</div><div class="meta" style="color:var(--muted); font-size:12px">${prog}</div>`;
+      }
+      const avatarChar=(u&&u!=='—')?u.charAt(0):'?';
+      h+=`<tr>
+        <td><div class="user-cell"><div class="avatar"${s.userOverLimit?' style="background:linear-gradient(135deg,#FB7185,#F43F5E)"':''}>${avatarChar}</div><div><b>${escapeHtml(u)}</b><div>${limitTxt}</div></div></div></td>
+        <td>${dev}</td>
+        <td>${playing}</td>
+        <td>${s.isPlaying?methodBadge(s.playMethod):'—'}</td>
+        <td style="color:var(--muted); font-size:13px">${escapeHtml(s.remoteEndPoint||'')}</td>
+        <td><div class="actions">
+          <button class="icobtn" title="Avisar al usuario" onclick="avisarSesion('${s.sessionId}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+          ${s.isPlaying?`<button class="icobtn red" title="Cortar reproducción" onclick="detenerSesion('${s.sessionId}','${escapeHtml(u)}')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>`:''}
+        </div></td></tr>`;
+    }
+    wrap.innerHTML=h+'</tbody></table>';
+  }
+
+  async function detenerSesion(sessionId,user){
+    if(!confirm('¿Cortar la reproducción de "'+user+'"?')) return;
+    const r=await fetch('/api/v1/admin/sessions/stop',{method:'POST',headers:headers(),body:JSON.stringify({sessionId,username:user})});
+    if(r.ok){ toast('Reproducción detenida','ok'); cargarSesiones(); }
+    else { let m='Error al cortar'; try{ m=(await r.json()).error||m; }catch(e){} toast(m,'err'); }
+  }
+  async function avisarSesion(sessionId){
+    const text=prompt('Mensaje que verá el usuario en pantalla:'); if(!text) return;
+    const r=await fetch('/api/v1/admin/sessions/message',{method:'POST',headers:headers(),body:JSON.stringify({sessionId,text})});
+    if(r.ok){ toast('Mensaje enviado','ok'); }
+    else { let m='Error al enviar'; try{ m=(await r.json()).error||m; }catch(e){} toast(m,'err'); }
+  }
 
   async function cargar(){ const r=await fetch('/api/v1/admin/subscribers',{headers:headers()}); if(!r.ok) return; SUBS=(await r.json()).subscribers||[]; stats(); renderAlerts(); render(); }
 

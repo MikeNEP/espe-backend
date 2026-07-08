@@ -563,6 +563,88 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, adminView(sub));
     }
 
+    // === Sesiones activas (quién está viendo ahora y en qué dispositivo) ===
+    // Enriquece cada sesión con el límite de pantallas del suscriptor y detecta
+    // quién se pasa del máximo permitido (pantallas simultáneas en uso).
+    if (method === 'GET' && path === '/api/v1/admin/sessions') {
+      if (!jellyfin.configured()) {
+        return json(res, 200, { configured: false, sessions: [], users: [], stats: { total: 0, playing: 0, overLimit: 0 } });
+      }
+      try {
+        const activeWithin = Math.min(3600, parseInt(url.searchParams.get('activeWithinSeconds'), 10) || 180);
+        const sessions = await jellyfin.getSessions(activeWithin);
+        // Agrupar por usuario para contar pantallas en uso vs. su límite.
+        const byUser = new Map();
+        for (const s of sessions) {
+          const key = (s.userName || '').toLowerCase();
+          if (!key) continue;
+          if (!byUser.has(key)) byUser.set(key, []);
+          byUser.get(key).push(s);
+        }
+        const users = [];
+        let overLimit = 0;
+        for (const [key, list] of byUser.entries()) {
+          const sub = store.getByUsername(key);
+          const limit = sub ? parseInt(sub.screens, 10) || 2 : null;
+          const playing = list.filter((x) => x.isPlaying).length;
+          const inUse = playing || list.length;
+          const over = limit != null && inUse > limit;
+          if (over) overLimit += 1;
+          users.push({
+            username: key,
+            known: Boolean(sub),
+            limit,
+            sessions: list.length,
+            playing,
+            inUse,
+            over,
+          });
+          // Marcar en cada sesión el límite y si el usuario está excedido.
+          for (const s of list) { s.screenLimit = limit; s.userOverLimit = over; }
+        }
+        const stats = {
+          total: sessions.length,
+          playing: sessions.filter((s) => s.isPlaying).length,
+          overLimit,
+        };
+        return json(res, 200, { configured: true, sessions, users, stats });
+      } catch (e) {
+        logger.audit('sessions.list', { ok: false, error: e.message });
+        return json(res, 502, { error: 'no se pudieron leer las sesiones: ' + e.message });
+      }
+    }
+
+    // Cortar (detener) la reproducción de una sesión concreta.
+    if (method === 'POST' && path === '/api/v1/admin/sessions/stop') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      const sessionId = (body.sessionId || '').trim();
+      if (!sessionId) return json(res, 400, { error: 'sessionId requerido' });
+      try {
+        await jellyfin.stopSession(sessionId);
+        logger.audit('sessions.stop', { ip, sessionId, user: body.username || null });
+        return json(res, 200, { ok: true });
+      } catch (e) {
+        return json(res, 502, { error: e.message });
+      }
+    }
+
+    // Enviar un mensaje emergente a una sesión (aviso en pantalla del usuario).
+    if (method === 'POST' && path === '/api/v1/admin/sessions/message') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      const sessionId = (body.sessionId || '').trim();
+      const text = (body.text || '').trim();
+      if (!sessionId || !text) return json(res, 400, { error: 'sessionId y text requeridos' });
+      try {
+        await jellyfin.sendSessionMessage(sessionId, text.slice(0, 300));
+        logger.audit('sessions.message', { ip, sessionId });
+        return json(res, 200, { ok: true });
+      } catch (e) {
+        return json(res, 502, { error: e.message });
+      }
+    }
+
     return json(res, 404, { error: 'ruta de admin no encontrada' });
   }
 
