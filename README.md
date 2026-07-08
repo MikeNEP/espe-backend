@@ -41,6 +41,7 @@ El contenedor trae `HEALTHCHECK` y `restart: unless-stopped`.
 `http://localhost:8080/admin` — ingresa tu `ADMIN_KEY`. Desde ahí:
 - **Panel:** KPIs, ingresos/MRR, alertas de vencimiento, alta/renovación/revocación, baneo, historial, CSV.
 - **Configuración:** nombre del negocio, moneda, precios y días de recordatorio.
+- **En vivo:** sesiones/dispositivos conectados a Jellyfin en tiempo real (quién ve qué, método de reproducción y progreso), con **corte de sesión** y aviso en pantalla; marca a quién se pasa de su límite de pantallas.
 - **Sistema:** estado de notificaciones (enviar prueba, correr recordatorios), backups y log de auditoría.
 
 ## Configuración (.env)
@@ -88,6 +89,9 @@ POST /api/v1/admin/revoke             # revoca { username }
 POST /api/v1/admin/ban                # banea/desbanea { username, banned }
 POST /api/v1/admin/phone              # actualiza teléfono
 POST /api/v1/admin/screens            # pantallas simultáneas
+GET  /api/v1/admin/sessions           # sesiones activas en Jellyfin + exceso de pantallas por usuario
+POST /api/v1/admin/sessions/stop      # corta una sesión { sessionId }
+POST /api/v1/admin/sessions/message   # aviso en pantalla { sessionId, text }
 GET  /api/v1/admin/settings           # lee configuración
 POST /api/v1/admin/settings           # guarda configuración
 GET  /api/v1/admin/audit?limit=200    # log de auditoría
@@ -147,6 +151,20 @@ Si tu servidor Jellyfin deja de responder, el backend te **avisa por Telegram** 
 - Chequea cada `MONITOR_INTERVAL_MIN` minutos (5 por defecto).
 - Avisa tras `MONITOR_FAIL_THRESHOLD` fallos seguidos (2 por defecto) y **también cuando se recupera**.
 - Se apaga con `JELLYFIN_MONITOR=false`. Estado visible en `/health`.
+
+## Sesiones en vivo y control de pantallas
+
+En el panel (**En vivo**) ves en tiempo real **quién está conectado a Jellyfin**, en qué
+dispositivo, qué está viendo, el progreso y si reproduce en **Direct Play / Direct Stream /
+Transcodificación**. Se actualiza solo cada 10 s (opcional).
+
+- El **límite de pantallas** por suscriptor ya lo aplica **Jellyfin** de forma nativa
+  (`MaxActiveSessions` en la policy del usuario), así el stream de más se bloquea aunque
+  usen un APK modificado. Esta vista además **detecta y marca en rojo** a quien tenga más
+  reproducciones activas que su límite.
+- **Cortar sesión:** detiene la reproducción de un dispositivo concreto.
+- **Avisar:** envía un mensaje emergente que el usuario ve en su pantalla (ej. "renueva tu suscripción").
+- No requiere configuración extra: reutiliza `JELLYFIN_URL` / `JELLYFIN_API_KEY`.
 
 ## Bots de pedidos (películas/series)
 

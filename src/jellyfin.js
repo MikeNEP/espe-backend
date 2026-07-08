@@ -221,6 +221,73 @@ async function getFullCatalog() {
   return { movies, series };
 }
 
+// --- Sesiones activas (gestión de dispositivos / pantallas en vivo) ---------
+const TICKS_PER_SECOND = 10000000; // Jellyfin mide el tiempo en "ticks" (100ns).
+
+// Lista las sesiones activas en Jellyfin (quién está conectado/reproduciendo).
+// Devuelve una forma limpia y estable para el panel, sin exponer datos crudos.
+// activeWithinSeconds: solo sesiones con actividad reciente (por defecto 3 min).
+async function getSessions(activeWithinSeconds = 180) {
+  if (!configured()) return [];
+  const q = activeWithinSeconds ? `?ActiveWithinSeconds=${activeWithinSeconds}` : '';
+  const res = await jfFetch(`/Sessions${q}`);
+  if (!res.ok) throw new Error(`Jellyfin /Sessions devolvió ${res.status}`);
+  const sessions = await res.json();
+  return (Array.isArray(sessions) ? sessions : []).map((s) => {
+    const np = s.NowPlayingItem || null;
+    const ps = s.PlayState || {};
+    const runtimeTicks = np && np.RunTimeTicks ? np.RunTimeTicks : 0;
+    const positionTicks = ps.PositionTicks || 0;
+    return {
+      sessionId: s.Id,
+      userId: s.UserId || null,
+      userName: s.UserName || '',
+      client: s.Client || '',
+      appVersion: s.ApplicationVersion || '',
+      deviceName: s.DeviceName || '',
+      deviceId: s.DeviceId || '',
+      remoteEndPoint: s.RemoteEndPoint || '',
+      lastActivity: s.LastActivityDate || null,
+      isPlaying: Boolean(np),
+      isPaused: Boolean(ps.IsPaused),
+      // DirectPlay / DirectStream / Transcode: útil para ver si transcodifica.
+      playMethod: ps.PlayMethod || null,
+      nowPlaying: np
+        ? {
+            title: np.Name || '',
+            type: np.Type || '',
+            series: np.SeriesName || '',
+            year: np.ProductionYear || null,
+            positionSec: Math.floor(positionTicks / TICKS_PER_SECOND),
+            runtimeSec: Math.floor(runtimeTicks / TICKS_PER_SECOND),
+            progress: runtimeTicks > 0 ? Math.min(100, Math.round((positionTicks / runtimeTicks) * 100)) : 0,
+          }
+        : null,
+    };
+  });
+}
+
+// Detiene la reproducción de una sesión concreta (echa lo que se está viendo).
+async function stopSession(sessionId) {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const res = await jfFetch(`/Sessions/${encodeURIComponent(sessionId)}/Playing/Stop`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`No se pudo detener la sesión (${res.status})`);
+  return true;
+}
+
+// Envía un mensaje emergente a una sesión (aparece en la pantalla del usuario).
+async function sendSessionMessage(sessionId, text, header = 'ESPE Player') {
+  if (!configured()) throw new Error('Jellyfin no está configurado');
+  const res = await jfFetch(`/Sessions/${encodeURIComponent(sessionId)}/Message`, {
+    method: 'POST',
+    body: JSON.stringify({ Text: String(text || ''), Header: header, TimeoutMs: 8000 }),
+  });
+  if (!res.ok) throw new Error(`No se pudo enviar el mensaje (${res.status})`);
+  return true;
+}
+
 // Descarga el póster de un ítem (para servirlo por proxy sin exponer la API key).
 async function fetchImage(id) {
   if (!configured()) return null;
@@ -233,4 +300,5 @@ async function fetchImage(id) {
 module.exports = {
   configured, ping, setDisabled, findUserId, createUser, setPassword,
   getCatalogSummary, getLatest, getFullCatalog, fetchImage, searchCatalog,
+  getSessions, stopSession, sendSessionMessage,
 };
