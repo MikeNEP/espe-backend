@@ -16,6 +16,7 @@ const notifier = require('./notifier');
 const reminders = require('./reminders');
 const mercadopago = require('./mercadopago');
 const requests = require('./requests');
+const usage = require('./usage');
 const telegramBot = require('./bots/telegram');
 const whatsappBot = require('./bots/whatsapp');
 const monitor = require('./monitor');
@@ -366,6 +367,13 @@ const server = http.createServer(async (req, res) => {
       }
       if (Array.isArray(body.reminderDays)) patch.reminderDays = body.reminderDays;
       if (body.trialHours != null) patch.trialHours = Math.max(1, parseInt(body.trialHours, 10) || 2);
+      if (body.autoKick != null) patch.autoKick = Boolean(body.autoKick);
+      if (body.antiShare && typeof body.antiShare === 'object') {
+        patch.antiShare = {};
+        if (body.antiShare.enabled != null) patch.antiShare.enabled = Boolean(body.antiShare.enabled);
+        if (body.antiShare.maxIps != null) patch.antiShare.maxIps = Math.max(1, parseInt(body.antiShare.maxIps, 10) || 3);
+        if (body.antiShare.windowHours != null) patch.antiShare.windowHours = Math.max(1, parseInt(body.antiShare.windowHours, 10) || 24);
+      }
       if (body.requests && typeof body.requests === 'object') {
         patch.requests = {};
         if (body.requests.enabled != null) patch.requests.enabled = Boolean(body.requests.enabled);
@@ -563,6 +571,40 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, adminView(sub));
     }
 
+    // === Generar link de pago de Mercado Pago para un suscriptor ===
+    // Crea una preferencia de checkout y devuelve el link para enviar al cliente.
+    // Al pagar, el webhook de MP renueva la suscripción automáticamente.
+    if (method === 'POST' && path === '/api/v1/admin/paylink') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      if (!mercadopago.configured()) {
+        return json(res, 400, { error: 'Mercado Pago no está configurado (falta MP_ACCESS_TOKEN)' });
+      }
+      const username = (body.username || '').trim().toLowerCase();
+      if (!username) return json(res, 400, { error: 'username requerido' });
+      if (!/^[a-z0-9._-]{1,64}$/.test(username)) {
+        return json(res, 400, { error: 'username inválido' });
+      }
+      const cfg = settings.get();
+      const plan = ['mensual', 'trimestral', 'anual'].includes(body.plan) ? body.plan : 'mensual';
+      const days = parseInt(body.days, 10) || settings.daysForPlan(plan);
+      let amount = Number(body.amount);
+      if (!amount || amount <= 0) amount = Number(cfg.prices[plan]) || 0;
+      if (amount <= 0) {
+        return json(res, 400, { error: `Configura el precio del plan "${plan}" en Configuración, o ingresa un monto.` });
+      }
+      try {
+        const pref = await mercadopago.createPreference({
+          username, plan, days, amount, title: `${cfg.business || 'ESPE Player'} · ${plan}`,
+        });
+        if (!pref.url) return json(res, 502, { error: 'Mercado Pago no devolvió un link de pago' });
+        logger.audit('mp.paylink', { ip, username, plan, days, amount });
+        return json(res, 200, { url: pref.url, plan, days, amount });
+      } catch (e) {
+        return json(res, 502, { error: e.message });
+      }
+    }
+
     // === Sesiones activas (quién está viendo ahora y en qué dispositivo) ===
     // Enriquece cada sesión con el límite de pantallas del suscriptor y detecta
     // quién se pasa del máximo permitido (pantallas simultáneas en uso).
@@ -645,6 +687,23 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // === Detección de cuentas compartidas (anti-abuso) ===
+    // Reporta, por usuario, cuántas IPs distintas se vieron en la ventana y
+    // marca a quienes superan el máximo configurado.
+    if (method === 'GET' && path === '/api/v1/admin/abuse') {
+      const cfg = settings.get();
+      const as = cfg.antiShare || {};
+      const windowHours = parseInt(url.searchParams.get('windowHours'), 10) || as.windowHours || 24;
+      const maxIps = as.maxIps || 3;
+      const report = usage.report(windowHours);
+      const flagged = report.filter((r) => r.distinctIps > maxIps);
+      return json(res, 200, {
+        config: { enabled: as.enabled !== false, maxIps, windowHours },
+        flagged,
+        report,
+      });
+    }
+
     return json(res, 404, { error: 'ruta de admin no encontrada' });
   }
 
@@ -669,6 +728,77 @@ function syncSweep(force = false) {
   }
 }
 
+// --- Muestreo de sesiones (anti-abuso + auto-corte) -------------------------
+const SESSION_SAMPLE_MIN = Math.max(1, parseInt(process.env.SESSION_SAMPLE_MIN, 10) || 2);
+const abuseNotified = new Map(); // username -> última notificación (ms), para no spamear.
+
+// Feature: auto-corte. Si un usuario reproduce en más pantallas que su límite,
+// detiene las sesiones sobrantes (las de actividad más reciente) y le avisa.
+// Es una red de seguridad extra: Jellyfin ya bloquea de entrada con
+// MaxActiveSessions, pero esto cubre casos como bajar el límite en caliente.
+async function enforceScreenLimits(sessions) {
+  if (!settings.get().autoKick) return;
+  const byUser = new Map();
+  for (const s of sessions) {
+    if (!s.isPlaying) continue;
+    const u = (s.userName || '').toLowerCase();
+    if (!u) continue;
+    if (!byUser.has(u)) byUser.set(u, []);
+    byUser.get(u).push(s);
+  }
+  for (const [u, list] of byUser.entries()) {
+    const sub = store.getByUsername(u);
+    const limit = sub ? parseInt(sub.screens, 10) || 2 : null;
+    if (limit == null || list.length <= limit) continue;
+    // Conservar las `limit` más antiguas; cortar las más recientes.
+    list.sort((a, b) => new Date(a.lastActivity || 0) - new Date(b.lastActivity || 0));
+    const sobrantes = list.slice(limit);
+    for (const s of sobrantes) {
+      try { await jellyfin.sendSessionMessage(s.sessionId, 'Límite de pantallas alcanzado: esta reproducción se detuvo.'); } catch { /* ignorar */ }
+      try {
+        await jellyfin.stopSession(s.sessionId);
+        logger.audit('sessions.autokick', { username: u, sessionId: s.sessionId, limit });
+      } catch (e) {
+        logger.audit('sessions.autokick', { ok: false, username: u, error: e.message });
+      }
+    }
+  }
+}
+
+// Detección de cuentas compartidas: si un usuario supera el máximo de IPs
+// distintas en la ventana, avisa al admin (una vez por ventana por usuario).
+async function checkSharedAccounts() {
+  const cfg = settings.get();
+  const as = cfg.antiShare || {};
+  if (as.enabled === false) return;
+  const maxIps = as.maxIps || 3;
+  const windowHours = as.windowHours || 24;
+  const flagged = usage.flagged(maxIps, windowHours);
+  const now = Date.now();
+  for (const f of flagged) {
+    const last = abuseNotified.get(f.username) || 0;
+    if (now - last < windowHours * 3600000) continue; // ya avisado en esta ventana
+    abuseNotified.set(f.username, now);
+    logger.audit('abuse.flag', { username: f.username, distinctIps: f.distinctIps, windowHours });
+    await notifier.notifyAdmin(
+      `⚠️ Posible cuenta compartida: "${f.username}" se usó desde ${f.distinctIps} IPs distintas en las últimas ${windowHours}h (límite ${maxIps}).`,
+    );
+  }
+}
+
+// Recorre las sesiones activas: registra uso, aplica auto-corte y anti-abuso.
+async function sampleSessions() {
+  if (!jellyfin.configured()) return;
+  try {
+    const sessions = await jellyfin.getSessions(300);
+    usage.record(sessions);
+    await enforceScreenLimits(sessions);
+    await checkSharedAccounts();
+  } catch (e) {
+    logger.audit('sessions.sample', { ok: false, error: e.message });
+  }
+}
+
 // --- Arranque ---------------------------------------------------------------
 // Backup automático antes de cada escritura de suscriptores + backup diario.
 store.setBeforeSaveHook(() => backup.backupNow('presave'));
@@ -676,6 +806,8 @@ backup.scheduleDaily();
 reminders.schedule(6); // recordatorios cada 6h
 setInterval(() => syncSweep(false), 5 * 60 * 1000); // revisa vencimientos/pruebas cada 5 min
 setTimeout(() => syncSweep(true), 3000); // sincronización completa al arrancar
+setInterval(sampleSessions, SESSION_SAMPLE_MIN * 60 * 1000); // uso/anti-abuso/auto-corte
+setTimeout(sampleSessions, 8000); // primer muestreo poco después de arrancar
 telegramBot.start(); // bot de pedidos por long polling (si está habilitado)
 monitor.schedule(); // monitor de caídas de Jellyfin (avisa por Telegram)
 

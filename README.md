@@ -41,7 +41,8 @@ El contenedor trae `HEALTHCHECK` y `restart: unless-stopped`.
 `http://localhost:8080/admin` — ingresa tu `ADMIN_KEY`. Desde ahí:
 - **Panel:** KPIs, ingresos/MRR, alertas de vencimiento, alta/renovación/revocación, baneo, historial, CSV.
 - **Configuración:** nombre del negocio, moneda, precios y días de recordatorio.
-- **En vivo:** sesiones/dispositivos conectados a Jellyfin en tiempo real (quién ve qué, método de reproducción y progreso), con **corte de sesión** y aviso en pantalla; marca a quién se pasa de su límite de pantallas.
+- **Panel:** además, botón **Cobrar** por suscriptor que genera un **link de pago de Mercado Pago** listo para enviar por WhatsApp.
+- **En vivo:** sesiones/dispositivos conectados a Jellyfin en tiempo real (quién ve qué, método de reproducción y progreso), con **corte de sesión**, aviso en pantalla, **auto-corte** al exceder pantallas y detección de **cuentas compartidas** por IP.
 - **Sistema:** estado de notificaciones (enviar prueba, correr recordatorios), backups y log de auditoría.
 
 ## Configuración (.env)
@@ -92,6 +93,8 @@ POST /api/v1/admin/screens            # pantallas simultáneas
 GET  /api/v1/admin/sessions           # sesiones activas en Jellyfin + exceso de pantallas por usuario
 POST /api/v1/admin/sessions/stop      # corta una sesión { sessionId }
 POST /api/v1/admin/sessions/message   # aviso en pantalla { sessionId, text }
+POST /api/v1/admin/paylink            # genera link de pago MP { username, plan, amount? }
+GET  /api/v1/admin/abuse              # reporte de IPs distintas por usuario (cuentas compartidas)
 GET  /api/v1/admin/settings           # lee configuración
 POST /api/v1/admin/settings           # guarda configuración
 GET  /api/v1/admin/audit?limit=200    # log de auditoría
@@ -114,6 +117,16 @@ POST /api/v1/webhook/mercadopago
 **Configuración en Mercado Pago:** crea una preferencia de pago con
 `external_reference = "<usuario>|<plan>"` y registra la URL del webhook apuntando a
 `https://TU-DOMINIO/api/v1/webhook/mercadopago`.
+
+### Generar link de pago desde el panel
+No hace falta armar la preferencia a mano: en el panel, cada suscriptor tiene el botón
+**Cobrar** que crea la preferencia por vos (con el `external_reference` y `metadata` correctos)
+y te devuelve el **link listo**, con opción de **copiarlo** o **enviarlo por WhatsApp**.
+Cuando el cliente paga, el webhook de arriba **renueva la suscripción automáticamente**.
+- Toma el precio del plan (o un monto que ingreses) desde **Configuración**.
+- `MP_CURRENCY_ID` fija la moneda (ARS/USD/MXN…); si se deja vacío, usa la de tu cuenta.
+- `MP_NOTIFICATION_URL` (o `PUBLIC_URL`) define a dónde notifica MP.
+- Endpoint: `POST /api/v1/admin/paylink` `{ username, plan, amount? }`.
 
 ## Seguridad y robustez
 
@@ -164,7 +177,23 @@ Transcodificación**. Se actualiza solo cada 10 s (opcional).
   reproducciones activas que su límite.
 - **Cortar sesión:** detiene la reproducción de un dispositivo concreto.
 - **Avisar:** envía un mensaje emergente que el usuario ve en su pantalla (ej. "renueva tu suscripción").
-- No requiere configuración extra: reutiliza `JELLYFIN_URL` / `JELLYFIN_API_KEY`.
+- Reutiliza `JELLYFIN_URL` / `JELLYFIN_API_KEY`.
+
+### Auto-corte al exceder el límite (opcional)
+Actívalo en **Configuración → Auto-corte**. Un muestreo en segundo plano (cada
+`SESSION_SAMPLE_MIN` minutos) revisa las sesiones y, si un usuario reproduce en más
+pantallas que su límite, **detiene las sobrantes** (las de actividad más reciente) y le
+avisa por pantalla. Es un refuerzo del bloqueo nativo de Jellyfin (`MaxActiveSessions`),
+útil por ejemplo cuando bajas el límite con sesiones ya en curso.
+
+### Detección de cuentas compartidas (anti-abuso)
+El backend registra las **IPs por usuario** que ve en las sesiones (en `data/usage.json`,
+con retención `USAGE_RETENTION_DAYS`). Si una cuenta se usa desde **más IPs distintas** que
+el máximo configurado dentro de la ventana, **te avisa** (por tu canal de notificaciones) y
+la marca en el panel (**En vivo → Posibles cuentas compartidas**).
+- Se configura en **Configuración**: activar/desactivar, `maxIps` y `windowHours`.
+- Endpoint: `GET /api/v1/admin/abuse`.
+- El aviso al admin no se repite dentro de la misma ventana para no saturar.
 
 ## Bots de pedidos (películas/series)
 

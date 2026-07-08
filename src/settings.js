@@ -26,6 +26,15 @@ const DEFAULTS = {
     windowDays: 7,       // ventana del límite
     maxPerWindow: 1,     // pedidos permitidos por ventana y usuario
   },
+  // Auto-corte: detener sesiones sobrantes cuando un usuario supera su límite
+  // de pantallas (además del bloqueo nativo de Jellyfin). Apagado por defecto.
+  autoKick: false,
+  // Detección de cuentas compartidas por IP (anti-abuso).
+  antiShare: {
+    enabled: true,       // alertar al admin ante uso desde muchas IPs
+    maxIps: 3,           // IPs distintas permitidas dentro de la ventana
+    windowHours: 24,     // ventana de observación (horas)
+  },
 };
 
 function ensure() {
@@ -44,6 +53,7 @@ function get() {
       planDays: { ...DEFAULTS.planDays, ...(data.planDays || {}) },
       reminderDays: Array.isArray(data.reminderDays) ? data.reminderDays : DEFAULTS.reminderDays,
       requests: { ...DEFAULTS.requests, ...(data.requests || {}) },
+      antiShare: { ...DEFAULTS.antiShare, ...(data.antiShare || {}) },
     };
   } catch (e) {
     return { ...DEFAULTS };
@@ -62,6 +72,7 @@ function save(patch) {
       .sort((a, b) => b - a);
   }
   if (patch.requests) next.requests = { ...cur.requests, ...patch.requests };
+  if (patch.antiShare) next.antiShare = { ...cur.antiShare, ...patch.antiShare };
   ensure();
   const tmp = FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2));
