@@ -22,9 +22,60 @@ const notifier = require('./notifier');
 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || '';
+// Base de la API de MP (configurable para pruebas; por defecto la real).
+const MP_API_BASE = (process.env.MP_API_BASE || 'https://api.mercadopago.com').replace(/\/$/, '');
+// Moneda ISO para el checkout (ARS, USD, MXN, etc.). Si se deja vacío, Mercado
+// Pago usa la moneda por defecto de la cuenta según el país del access token.
+const MP_CURRENCY_ID = (process.env.MP_CURRENCY_ID || '').trim().toUpperCase();
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+// URL a la que MP notifica los pagos. Por defecto: PUBLIC_URL + ruta del webhook.
+const MP_NOTIFICATION_URL =
+  process.env.MP_NOTIFICATION_URL || (PUBLIC_URL ? `${PUBLIC_URL}/api/v1/webhook/mercadopago` : '');
 
 function configured() {
   return Boolean(MP_ACCESS_TOKEN);
+}
+
+// Crea una preferencia de pago (checkout) y devuelve el link para enviarle al
+// cliente. Al pagar, MP dispara el webhook que ya renueva la suscripción solo,
+// porque incluimos external_reference "usuario|plan" y metadata.
+async function createPreference({ username, plan, days, amount, title }) {
+  if (!configured()) throw new Error('Mercado Pago no está configurado (falta MP_ACCESS_TOKEN)');
+  const price = Number(amount);
+  if (!price || price <= 0) throw new Error('El monto debe ser mayor a 0');
+  const item = {
+    title: title || `Suscripción ${plan}`,
+    quantity: 1,
+    unit_price: price,
+  };
+  if (MP_CURRENCY_ID) item.currency_id = MP_CURRENCY_ID;
+  const body = {
+    items: [item],
+    external_reference: `${username}|${plan}`,
+    metadata: { username, plan, days },
+  };
+  if (MP_NOTIFICATION_URL) body.notification_url = MP_NOTIFICATION_URL;
+  if (PUBLIC_URL) {
+    body.back_urls = { success: PUBLIC_URL, pending: PUBLIC_URL, failure: PUBLIC_URL };
+  }
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(`${MP_API_BASE}/checkout/preferences`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`MP /checkout/preferences devolvió ${res.status} ${txt.slice(0, 180)}`);
+    }
+    const data = await res.json();
+    return { url: data.init_point || data.sandbox_init_point, id: data.id, sandbox: data.sandbox_init_point || null };
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 // Verifica la firma del webhook según el esquema de Mercado Pago.
@@ -60,7 +111,7 @@ async function fetchPayment(paymentId) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 10000);
   try {
-    const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    const res = await fetch(`${MP_API_BASE}/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
       signal: ctrl.signal,
     });
@@ -154,4 +205,4 @@ async function handleNotification({ req, body, query }) {
   return { httpStatus: 200, status: 'ok', username, plan, days, subscriber: sub };
 }
 
-module.exports = { configured, handleNotification, verifySignature, fetchPayment };
+module.exports = { configured, handleNotification, verifySignature, fetchPayment, createPreference };
