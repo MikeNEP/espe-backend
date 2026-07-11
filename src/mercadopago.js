@@ -154,4 +154,57 @@ async function handleNotification({ req, body, query }) {
   return { httpStatus: 200, status: 'ok', username, plan, days, subscriber: sub };
 }
 
-module.exports = { configured, handleNotification, verifySignature, fetchPayment };
+// Crea un link de pago (preferencia) de Mercado Pago para un usuario + plan.
+// El botón "Renovar" de la app abre este link; al pagar, el webhook renueva solo.
+async function createPreference(username, plan) {
+  if (!configured()) throw new Error('Mercado Pago no configurado');
+  const cfg = settings.get();
+  const price = Number(cfg.prices[plan]);
+  if (!price || price <= 0) throw new Error(`El plan "${plan}" no tiene precio configurado`);
+
+  const backBase = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+  const body = {
+    items: [
+      {
+        title: `${cfg.business || 'ESPE Player'} - Plan ${plan}`,
+        quantity: 1,
+        unit_price: price,
+        currency_id: process.env.MP_CURRENCY || 'USD',
+      },
+    ],
+    // Clave: así el webhook sabe a quién y qué plan acreditar.
+    external_reference: `${username}|${plan}`,
+    metadata: { username, plan },
+    ...(backBase
+      ? {
+          back_urls: {
+            success: `${backBase}/pago-ok`,
+            pending: `${backBase}/pago-pendiente`,
+            failure: `${backBase}/pago-error`,
+          },
+          auto_return: 'approved',
+        }
+      : {}),
+  };
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`MP /checkout/preferences devolvió ${res.status} ${txt.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    return { url: data.init_point || data.sandbox_init_point, id: data.id };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+module.exports = { configured, handleNotification, verifySignature, fetchPayment, createPreference };

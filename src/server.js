@@ -16,6 +16,7 @@ const notifier = require('./notifier');
 const reminders = require('./reminders');
 const mercadopago = require('./mercadopago');
 const requests = require('./requests');
+const reports = require('./reports');
 const telegramBot = require('./bots/telegram');
 const whatsappBot = require('./bots/whatsapp');
 const monitor = require('./monitor');
@@ -316,6 +317,67 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, publicView(store.getByUsername(username)));
   }
 
+  // === Rutas para la app (protegidas con x-app-key si APP_KEY está definida) ===
+  function appAuthOk() {
+    return !APP_KEY || security.safeCompare(req.headers['x-app-key'], APP_KEY);
+  }
+
+  // Generar link de pago (botón "Renovar" de "Mi cuenta")
+  if (method === 'POST' && path === '/api/v1/app/checkout') {
+    const rl = security.rateLimit(`appcheckout:${ip}`, 30, 60 * 1000);
+    if (!rl.allowed) return json(res, 429, { error: 'demasiadas solicitudes' });
+    if (!appAuthOk()) return json(res, 401, { error: 'app key inválida' });
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+    const username = (body.username || '').trim().toLowerCase();
+    const plan = (body.plan || 'mensual').trim().toLowerCase();
+    if (!username) return json(res, 400, { error: 'username requerido' });
+    if (!mercadopago.configured()) return json(res, 503, { error: 'pagos no disponibles por el momento' });
+    try {
+      const pref = await mercadopago.createPreference(username, plan);
+      logger.audit('app.checkout', { ip, username, plan });
+      return json(res, 200, { url: pref.url, plan });
+    } catch (e) {
+      logger.audit('app.checkout', { ok: false, ip, username, plan, error: e.message });
+      return json(res, 502, { error: 'no se pudo generar el link de pago' });
+    }
+  }
+
+  // Pedido de contenido desde la app (te llega al admin)
+  if (method === 'POST' && path === '/api/v1/app/request') {
+    const rl = security.rateLimit(`apprequest:${ip}`, 30, 60 * 1000);
+    if (!rl.allowed) return json(res, 429, { error: 'demasiadas solicitudes' });
+    if (!appAuthOk()) return json(res, 401, { error: 'app key inválida' });
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+    const username = (body.username || '').trim().toLowerCase();
+    const title = (body.title || '').trim();
+    if (!title) return json(res, 400, { error: 'title requerido' });
+    const result = requests.add({ platform: 'app', userId: username || 'app', userName: username || 'app', title });
+    logger.audit('app.request', { ip, username, title });
+    notifier
+      .notifyAdmin(`🎬 Pedido desde la app${username ? ' de ' + username : ''}: "${title}"${result.voted ? ` (ahora ${result.votes} votos)` : ''}`)
+      .catch(() => {});
+    return json(res, 200, { ok: true, voted: Boolean(result.voted), votes: result.votes || 1 });
+  }
+
+  // Reporte de bug desde la app (te llega al admin)
+  if (method === 'POST' && path === '/api/v1/app/report') {
+    const rl = security.rateLimit(`appreport:${ip}`, 20, 60 * 1000);
+    if (!rl.allowed) return json(res, 429, { error: 'demasiadas solicitudes' });
+    if (!appAuthOk()) return json(res, 401, { error: 'app key inválida' });
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+    const message = (body.message || '').trim();
+    if (!message) return json(res, 400, { error: 'message requerido' });
+    const report = reports.add({ username: body.username, message, device: body.device, appVersion: body.appVersion });
+    logger.audit('app.report', { ip, username: body.username, id: report.id });
+    notifier
+      .notifyAdmin(`🐞 Reporte de bug${body.username ? ' de ' + body.username : ''}: ${message}${body.device ? `\nDispositivo: ${body.device}` : ''}`)
+      .catch(() => {});
+    return json(res, 200, { ok: true, id: report.id });
+  }
+
   // === Rutas de administración (requieren cabecera x-admin-key) ===
   if (path.startsWith('/api/v1/admin/')) {
     // Guarda general (anti-DoS): límite generoso para uso legítimo del panel.
@@ -422,6 +484,20 @@ const server = http.createServer(async (req, res) => {
       const status = url.searchParams.get('status') || undefined;
       const platform = url.searchParams.get('platform') || undefined;
       return json(res, 200, { requests: requests.list({ status, platform }), stats: requests.stats() });
+    }
+
+    // Reportes de bugs enviados desde la app
+    if (method === 'GET' && path === '/api/v1/admin/reports') {
+      const status = url.searchParams.get('status') || undefined;
+      return json(res, 200, { reports: reports.list({ status }) });
+    }
+    if (method === 'POST' && path === '/api/v1/admin/reports/status') {
+      const body = await readBody(req);
+      if (body.__tooLarge) return json(res, 413, { error: 'payload demasiado grande' });
+      const r = reports.setStatus((body.id || '').trim(), (body.status || '').trim());
+      if (!r) return json(res, 404, { error: 'reporte no encontrado' });
+      logger.audit('admin.report_status', { ip, id: r.id, status: r.status });
+      return json(res, 200, r);
     }
     // Cambiar estado de un pedido (aprobar/rechazar/cumplido) y avisar al usuario
     if (method === 'POST' && path === '/api/v1/admin/requests/status') {
